@@ -138,9 +138,10 @@ function updUi(){
   $('#open').disabled=!has;
   const cs=$('#cs');
   const pend=!page||EP.isPending(page);
-  if(page){cs.hidden=false;cs.className='cs '+(pend?'N':'Y');cs.textContent=pend?(page.publishedAt?'แก้ไขหลังเผยแพร่':'ยังไม่เผยแพร่'):'เผยแพร่แล้ว'}
+  const closed=!!(page&&page.closed&&page.publishedAt);
+  if(page){cs.hidden=false;cs.className='cs '+(closed?'C':pend?'N':'Y');cs.textContent=closed?'ปิดอยู่ (กด “เผยแพร่” เพื่อเปิดอีกครั้ง)':pend?(page.publishedAt?'แก้ไขหลังเผยแพร่':'ยังไม่เผยแพร่'):'เผยแพร่แล้ว'}
   else cs.hidden=true;
-  $('#publish').textContent=page&&!pend?'เผยแพร่แล้ว ✓':'เผยแพร่';
+  $('#publish').textContent=page&&!pend&&!closed?'เผยแพร่แล้ว ✓':'เผยแพร่';
   $('#pub').hidden=!(page&&page.publishedAt);
 }
 
@@ -151,7 +152,9 @@ function save(){
   dirty=false;
   if(!page&&!ta.value.trim())return;
   const now=Date.now();
-  page={id,title:'',md:ta.value,created:page?page.created:now,updated:now,publishedAt:page?page.publishedAt:0};
+  // ใช้ record ล่าสุดในเครื่องเป็นฐาน (มี key / publishedAt / closed ที่อาจเพิ่งเปลี่ยนจากแท็บอื่นหรือจากการเผยแพร่) แล้วทับด้วยข้อความใหม่
+  const base=EP.get(id)||page||{};
+  page=Object.assign({},base,{id,title:'',md:ta.value,created:base.created||now,updated:now});
   const ok=EP.put(page);
   $('#err').hidden=ok;
   $('#state').textContent=ok?'✓ บันทึกในเครื่องแล้ว':'บันทึกไม่ได้';
@@ -323,6 +326,7 @@ function tab(t){
 $('#tw').onclick=()=>tab('write');$('#tp').onclick=()=>tab('preview');
 
 renderPv();updUi();
+if(page&&page.publishedAt)EP.syncRemote().then(ch=>{if(ch){page=EP.get(id)||page;updUi()}});   // ตรวจว่าถูกปิด/เปิดจากหน้าจัดการหรือไม่
 if(page)$('#state').textContent='บันทึกล่าสุด '+EP.fmtDate(page.updated);
 })();
 </script>

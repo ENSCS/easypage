@@ -22,6 +22,7 @@ function ep_render($content)
 
     $p = new Parsedown();
     $p->setBreaksEnabled(true);
+    $p->setSafeMode(true);   // ไม่รัน HTML/JS ที่แทรกมาใน markdown (หน้าที่เผยแพร่ได้โดยไม่ต้องล็อกอิน) + กรองลิงก์ javascript:
     $html = $p->text($content);
 
     if ($mathParts) {
@@ -232,6 +233,51 @@ window.addEventListener('load', function() {
 });
 </script>
 <?php endif; ?>
+</body>
+</html>
+<?php
+    return ob_get_clean();
+}
+
+/** หน้าแจ้งสถานะ (ปิดการเผยแพร่ / ไม่พบ / ลิงก์ไม่ถูกต้อง) — ข้อความสุภาพ อ่านง่าย รองรับ Dark อัตโนมัติ */
+function ep_notice($icon, $title, $text, $hint = '', $id = '')
+{
+    $v = @filemtime(__DIR__ . '/mdview.css');
+    ob_start();
+?><!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title><?php echo htmlspecialchars($title); ?></title>
+<link rel="stylesheet" href="mdview.css?v=<?php echo (int)$v; ?>">
+<style>
+.notice{max-width:26em;margin:0 auto;padding:14vh 1.5rem 4rem;text-align:center}
+.notice .ico{font-size:3.4rem;line-height:1;margin-bottom:.4em}
+.notice h1{font-size:1.7em;margin:0 0 .5em;line-height:1.4}
+.notice p{margin:.6em 0}
+.notice .hint{color:var(--muted);font-size:.9em;margin-top:1.4em}
+.notice .code{display:inline-block;margin-top:1.8em;padding:.15em .7em;border:1px solid var(--border);border-radius:999px;color:var(--muted);font-size:.8em;font-family:"SFMono-Regular",Consolas,monospace}
+</style>
+<script>
+(function(){var t;try{t=localStorage.getItem('theme')}catch(e){}
+if(!t)t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+document.documentElement.setAttribute('data-theme',t);})();
+</script>
+</head>
+<body>
+<main class="notice">
+  <div class="ico" aria-hidden="true"><?php echo $icon; ?></div>
+  <h1><?php echo htmlspecialchars($title); ?></h1>
+  <p><?php echo htmlspecialchars($text); ?></p>
+<?php if ($hint !== ''): ?>
+  <p class="hint"><?php echo htmlspecialchars($hint); ?></p>
+<?php endif; ?>
+<?php if ($id !== ''): ?>
+  <div class="code">?=<?php echo htmlspecialchars($id); ?></div>
+<?php endif; ?>
+</main>
 </body>
 </html>
 <?php

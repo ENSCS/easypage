@@ -62,6 +62,7 @@ td.acts .btn,td.acts button{margin:0 2px 2px 0}
       <div class="stat"><b id="sAll">0</b><span>หน้าทั้งหมด</span></div>
       <div class="stat wait"><b id="sPend">0</b><span>ยังไม่เผยแพร่ / แก้ไขแล้ว</span></div>
       <div class="stat ok"><b id="sDone">0</b><span>เผยแพร่แล้ว</span></div>
+      <div class="stat"><b id="sClosed">0</b><span>ปิดอยู่</span></div>
     </div>
   </section>
 
@@ -90,8 +91,9 @@ function snippet(md){
 function say(t,ok){const m=$('#note');m.hidden=false;m.className='msg '+(ok?'ok':'err');m.textContent=t}
 function draw(){
   const all=EP.list(),qs=$('#q').value.trim().toLowerCase();
-  const pend=all.filter(EP.isPending).length;
-  $('#sAll').textContent=all.length;$('#sPend').textContent=pend;$('#sDone').textContent=all.length-pend;
+  const isClosed=p=>!!(p.closed&&p.publishedAt);
+  const closedN=all.filter(isClosed).length,pend=all.filter(p=>!isClosed(p)&&EP.isPending(p)).length;
+  $('#sAll').textContent=all.length;$('#sPend').textContent=pend;$('#sClosed').textContent=closedN;$('#sDone').textContent=all.length-pend-closedN;
   const rows=all.filter(p=>!qs||p.id.includes(qs)||p.title.toLowerCase().includes(qs)||p.md.toLowerCase().includes(qs));
   const tb=$('#rows');tb.textContent='';
   const em=$('#empty');
@@ -99,7 +101,7 @@ function draw(){
   em.textContent=all.length?'ไม่พบรายการที่ค้นหา':'ยังไม่มีหน้าที่เขียนไว้ — กด “+ เขียนใหม่” เพื่อเริ่ม หรือเปิดหน้าเขียนแล้วอัปโหลดไฟล์ .md';
   for(const p of rows){
     const tr=document.createElement('tr');
-    const pending=EP.isPending(p),title=p.title||MD.titleOf(p.md);
+    const closed=isClosed(p),pending=EP.isPending(p),title=p.title||MD.titleOf(p.md);
     const td=(cls,label)=>{const c=document.createElement('td');if(cls)c.className=cls;c.dataset.label=label;tr.appendChild(c);return c};
     const a=document.createElement('a');a.href='#';a.textContent='?='+p.id;a.title='คัดลอกลิงก์แชร์';
     a.onclick=async e=>{e.preventDefault();EP.toast(await EP.copyText(EP.shareUrl(p.id))?'คัดลอกลิงก์แล้ว':'คัดลอกไม่ได้')};
@@ -109,7 +111,7 @@ function draw(){
     const sm=document.createElement('small');sm.textContent=snippet(p.md);
     box.append(na);if(sm.textContent)box.append(sm);n.appendChild(box);
     td('date','แก้ไข').textContent=EP.fmtDate(p.updated);
-    const st=document.createElement('span');st.className='cs '+(pending?'N':'Y');st.textContent=pending?(p.publishedAt?'แก้ไขหลังเผยแพร่':'ยังไม่เผยแพร่'):'เผยแพร่แล้ว';
+    const st=document.createElement('span');st.className='cs '+(closed?'C':pending?'N':'Y');st.textContent=closed?'ปิดอยู่':pending?(p.publishedAt?'แก้ไขหลังเผยแพร่':'ยังไม่เผยแพร่'):'เผยแพร่แล้ว';
     td('','สถานะ').appendChild(st);
     const ac=td('acts','จัดการ');
     const mk=(t,cls,fn,href)=>{
@@ -119,13 +121,20 @@ function draw(){
     };
     mk('แก้ไข','',null,'edit.html?='+p.id);
     mk('ดู','',null,'view.php?='+p.id);
-    mk(pending?'เผยแพร่':'เผยแพร่ซ้ำ','',async()=>{
-      const r=await EP.publish(p);
-      draw();say(r.ok?'เผยแพร่ “'+title+'” แล้ว (?='+p.id+')':'เผยแพร่ไม่สำเร็จ: '+r.error,r.ok);
-    });
+    if(p.publishedAt){
+      if(closed)mk('เปิดอีกครั้ง','',async()=>{
+        const r=await EP.setClosed(p.id,false);draw();
+        say(r.ok?'เปิด “'+title+'” แล้ว — ผู้อ่านเปิดลิงก์ได้อีกครั้ง':'เปิดไม่สำเร็จ: '+r.error,r.ok);
+      });
+      else mk('ปิด','danger',async()=>{
+        if(!confirm('ปิด “'+title+'” (?='+p.id+') ?\n\n• ผู้ที่เปิดลิงก์จะเห็นหน้าแจ้งว่าบทความนี้ปิดอยู่ ไม่เห็นเนื้อหา\n• เนื้อหายังอยู่ครบ กด “เปิดอีกครั้ง” เมื่อไหร่ก็ได้'))return;
+        const r=await EP.setClosed(p.id,true);draw();
+        say(r.ok?'ปิด “'+title+'” แล้ว — ผู้ที่เปิดลิงก์จะเห็นหน้าแจ้งว่าปิดอยู่':'ปิดไม่สำเร็จ: '+r.error,r.ok);
+      });
+    }
     mk('ไฟล์ .md','',()=>EP.download(p.id+'.md',EP.fileText(p),'text/markdown;charset=utf-8'));
     mk('ลบ','danger',()=>{
-      if(!confirm('ลบ “'+title+'” (?='+p.id+') ออกจากเครื่องนี้?\n\n• ลบแล้วกู้คืนไม่ได้ (ควรสำรองไว้ก่อน)\n• ไฟล์ที่เผยแพร่บนเว็บแล้ว (p/'+p.id+'.md) จะไม่ถูกลบ — ต้องลบเองที่เซิร์ฟเวอร์'))return;
+      if(!confirm('ลบ “'+title+'” (?='+p.id+') ออกจากเครื่องนี้?\n\n• ลบแล้วกู้คืนไม่ได้ (ควรสำรองไว้ก่อน)\n• ไฟล์ที่เผยแพร่บนเว็บแล้ว (p/'+p.id+'.md) จะไม่ถูกลบ'+(p.publishedAt?' และเครื่องนี้จะแก้/ปิดหน้านั้นไม่ได้อีก (กุญแจเจ้าของหน้าอยู่กับข้อมูลที่ลบ)':' — ต้องลบเองที่เซิร์ฟเวอร์')))return;
       EP.remove(p.id);draw();EP.toast('ลบแล้ว');
     });
     tb.appendChild(tr);
@@ -137,6 +146,7 @@ addEventListener('storage',draw);
 addEventListener('pageshow',draw);
 try{localStorage.setItem('easypage:t','1');localStorage.removeItem('easypage:t')}catch(e){$('#err').hidden=false}
 draw();
+EP.syncRemote().then(ch=>{if(ch)draw()});   // ตรวจสถานะจริงบนเซิร์ฟเวอร์ (ปิด/เปิด/ไฟล์หาย) ให้ตรงกัน
 })();
 </script>
 </body>

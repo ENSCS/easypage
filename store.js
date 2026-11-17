@@ -34,14 +34,18 @@ function randId(){
   for(const x of b)s+=ALPHA[x&31];   // 32 ตัวพอดี → ไม่เอนเอียง
   return s;
 }
-/* ตรวจว่ามีไฟล์เผยแพร่ p/<id>.md อยู่แล้วหรือไม่ (เปิดผ่าน http เท่านั้น; file:// / ติดต่อไม่ได้ = ถือว่าไม่มี) */
-async function exists(id){
+/* สถานะจริงบนเซิร์ฟเวอร์ผ่าน view.php?=id&check=1 → 'open' | 'closed' | 'missing' | null (ติดต่อไม่ได้ / ไม่ใช่เซิร์ฟเวอร์ PHP) */
+async function remoteState(id){
   try{
-    const c=new AbortController(),t=setTimeout(()=>c.abort(),3000);
-    const r=await fetch('p/'+id+'.md',{method:'HEAD',cache:'no-store',signal:c.signal});
-    clearTimeout(t);return r.ok;
-  }catch(e){return false}
+    const c=new AbortController(),t=setTimeout(()=>c.abort(),4000);
+    const r=await fetch('view.php?='+id+'&check=1',{method:'HEAD',cache:'no-store',signal:c.signal});
+    clearTimeout(t);
+    const st=r.headers.get('X-Easypage-State');
+    return st==='open'||st==='closed'||st==='missing'?st:null;
+  }catch(e){return null}
 }
+/* มี id นี้อยู่บนเซิร์ฟเวอร์แล้ว (เปิดอยู่หรือปิดอยู่) → ห้ามสุ่มซ้ำ */
+async function exists(id){const s=await remoteState(id);return s==='open'||s==='closed'}
 async function genId(){
   const all=readAll();
   for(let k=0;k<30;k++){
@@ -89,33 +93,72 @@ function toast(msg){
 /* ยังไม่เผยแพร่ หรือแก้ไขหลังเผยแพร่ครั้งล่าสุด */
 const isPending=p=>!p.publishedAt||p.publishedAt<p.updated;
 
-/* ---------- เผยแพร่: ส่งไป publish.php เขียน p/<id>.md บนเซิร์ฟเวอร์ ---------- */
+/* ---------- เผยแพร่ / ปิด / เปิด: ส่งไป publish.php ---------- */
 function markPublished(id,updated){
   const p=get(id);if(!p)return null;
   p.publishedAt=Math.max(p.publishedAt||0,updated);
+  p.closed=false;   // เผยแพร่ = เปิดให้อ่านได้
   put(p);return p;
 }
-async function publish(p){
+function markClosed(id,closed){
+  const p=get(id);if(!p)return null;
+  p.closed=!!closed;put(p);return p;
+}
+/* ส่งคำสั่งไป publish.php (action: publish | close | open) — ถามรหัสผ่านให้เองถ้าเซิร์ฟเวอร์ตั้งไว้ */
+/* กุญแจเจ้าของหน้า (สุ่ม 128 บิต) — สร้างตอนเผยแพร่ครั้งแรก เก็บในเบราว์เซอร์ผู้เขียน เซิร์ฟเวอร์เก็บแค่ hash
+   ใช้พิสูจน์ว่าเป็นเจ้าของหน้า (แก้/ปิด/เปิดได้เฉพาะเครื่องที่ถือกุญแจ) ในโหมด publish='open' */
+function ensureKey(id){
+  const p=get(id);
+  if(p&&p.key)return p.key;
+  const k=[...crypto.getRandomValues(new Uint8Array(16))].map(x=>x.toString(16).padStart(2,'0')).join('');
+  if(p){p.key=k;put(p)}
+  return k;
+}
+async function api(id,action,body){
+  const key=ensureKey(id);
   for(let i=0;i<3;i++){
     let pw='';try{pw=sessionStorage.getItem('easypage:pw')||''}catch(e){}
     let j;
     try{
-      const r=await fetch('publish.php?id='+encodeURIComponent(p.id),{method:'POST',
-        headers:{'X-Easypage':'1','X-Easypage-Password':encodeURIComponent(pw),'Content-Type':'text/plain;charset=UTF-8'},body:p.md});
+      const r=await fetch('publish.php?id='+encodeURIComponent(id)+'&action='+action,{method:'POST',
+        headers:{'X-Easypage':'1','X-Easypage-Key':key,'X-Easypage-Password':encodeURIComponent(pw),'Content-Type':'text/plain;charset=UTF-8'},body:body||''});
       j=await r.json();
     }catch(e){return {ok:false,error:'ติดต่อ publish.php ไม่ได้ — ต้องเปิดผ่านเว็บเซิร์ฟเวอร์ที่มี PHP (ไม่ใช่เปิดไฟล์ตรงๆ)'}}
     if(j&&j.needPassword){
-      const x=prompt((j.error||'ใส่รหัสผ่านเพื่อเผยแพร่')+'\n(จำไว้เฉพาะแท็บนี้ จนกว่าจะปิดแท็บ)');
-      if(x===null)return {ok:false,error:'ยกเลิกการเผยแพร่'};
+      const x=prompt((j.error||'ใส่รหัสผ่านเพื่อดำเนินการ')+'\n(จำไว้เฉพาะแท็บนี้ จนกว่าจะปิดแท็บ)');
+      if(x===null)return {ok:false,error:'ยกเลิก'};
       try{sessionStorage.setItem('easypage:pw',x)}catch(e){}
       continue;
     }
-    if(j&&j.ok)markPublished(p.id,p.updated);
     return j||{ok:false,error:'เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง'};
   }
   return {ok:false,error:'รหัสผ่านไม่ถูกต้อง'};
 }
+async function publish(p){
+  const j=await api(p.id,'publish',p.md);
+  if(j.ok)markPublished(p.id,p.updated);
+  return j;
+}
+/* ปิด: ผู้ที่เปิดลิงก์เห็นหน้าแจ้งว่าปิดอยู่ ไม่เห็นบทความ — เปิดกลับได้ (ไม่ลบเนื้อหา) */
+async function setClosed(id,closed){
+  const j=await api(id,closed?'close':'open');
+  if(j.ok)markClosed(id,closed);
+  return j;
+}
+/* ตรวจสถานะจริงของหน้าที่เผยแพร่แล้วทั้งหมด แล้วอัปเดตธง closed / publishedAt ในเครื่องให้ตรงกับเซิร์ฟเวอร์ → true ถ้ามีอะไรเปลี่ยน */
+async function syncRemote(){
+  let changed=false;
+  await Promise.all(list().filter(p=>p.publishedAt).map(async p=>{
+    const st=await remoteState(p.id);
+    if(st===null)return;                       // ติดต่อไม่ได้ → ไม่แตะ
+    const cur=get(p.id);if(!cur)return;
+    if(st==='missing'&&cur.publishedAt){cur.publishedAt=0;cur.closed=false;put(cur);changed=true}   // ไฟล์บนเซิร์ฟเวอร์หายไป
+    else if(st==='closed'&&!cur.closed){cur.closed=true;put(cur);changed=true}
+    else if(st==='open'&&cur.closed){cur.closed=false;put(cur);changed=true}
+  }));
+  return changed;
+}
 
 g.EP={ID_RE,list,get,put,remove,fileText,
-  genId,exists,idFromUrl,shareUrl,download,fmtDate,copyText,toast,isPending,publish,markPublished};
+  genId,exists,remoteState,syncRemote,setClosed,idFromUrl,shareUrl,download,fmtDate,copyText,toast,isPending,publish,markPublished,markClosed};
 })(window);

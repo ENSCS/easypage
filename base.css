@@ -43,6 +43,7 @@ input[type=text]:focus,input[type=search]:focus,textarea:focus,select:focus{outl
 .cs{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12.5px;white-space:nowrap}
 .cs.Y{background:var(--ok-soft);color:var(--ok)}
 .cs.N{background:var(--wait-soft);color:var(--wait)}
+.cs.C{background:var(--line);color:var(--muted)}
 
 .msg{padding:8px 12px;border-radius:8px;font-size:14px}
 .msg.ok{background:var(--ok-soft);color:var(--ok)}
