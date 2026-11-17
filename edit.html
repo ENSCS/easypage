@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>เขียน — Easypage</title>
+<link rel="stylesheet" href="base.css">
+<style>
+:root{--maxw:1500px}
+#state{font-size:13px;color:var(--muted);white-space:nowrap}
+.share{display:grid;gap:8px}
+.share .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.share input{flex:1 1 280px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:14px}
+.share .id{font-weight:600;font-variant-numeric:tabular-nums}
+.tabs{display:none;gap:8px}
+.tabs button{flex:1;padding:10px 14px}
+.tabs button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.ed{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.tools{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.tools button{padding:4px 10px;font-size:13.5px;min-width:36px;border-radius:6px}
+.tools .up{margin-left:auto}
+.tools .clr{color:var(--warn)}
+#md{width:100%;min-height:max(420px,calc(100dvh - 300px));resize:vertical;display:block;padding:12px 14px;font:14.5px/1.65 ui-monospace,"SF Mono",Menlo,Consolas,"Sarabun","Noto Sans Thai",monospace;tab-size:4}
+.ph{font-size:13px;color:var(--muted);margin:0 0 8px;display:flex;justify-content:space-between;gap:8px}
+.ph b{font-weight:600}
+#pv{width:100%;height:max(420px,calc(100dvh - 300px));border:1px solid var(--line);border-radius:10px;background:var(--panel);display:block}
+@media(max-width:860px){
+  .tabs{display:flex}
+  .ed{grid-template-columns:minmax(0,1fr)}
+  body[data-tab=write] #pvbox{display:none}
+  body[data-tab=preview] #wbox{display:none}
+  #md{font-size:16px;min-height:60dvh}
+  #pv{height:75dvh}
+  .hide-m{display:none}
+}
+</style>
+</head>
+<body data-tab="write">
+<header>
+  <div class="hrow">
+    <h1><a href="index.html" title="ไปหน้าจัดการ">✎ Easypage</a></h1>
+    <span id="state" class="grow"></span>
+    <a class="btn" href="index.html">จัดการ</a>
+  </div>
+</header>
+<main>
+  <div id="err" class="msg err" hidden>บันทึกลงเครื่องไม่ได้ (เบราว์เซอร์อาจปิดการเก็บข้อมูล / โหมดส่วนตัว) — ให้กด “ดาวน์โหลดไฟล์” เก็บไว้ก่อน</div>
+
+  <section class="card share">
+    <div class="row">
+      <h2 style="margin:0">ลิงก์สำหรับแชร์</h2>
+      <span class="id muted" id="idtxt"></span>
+      <span id="cs" class="cs N" hidden>ยังไม่ส่งออก</span>
+    </div>
+    <div class="row">
+      <input id="link" type="text" readonly aria-label="ลิงก์สำหรับแชร์">
+      <button id="copy">คัดลอกลิงก์</button>
+      <button id="dl" title="ดาวน์โหลดไว้สำรอง หรือใช้วางเองบนเซิร์ฟเวอร์อื่น">ดาวน์โหลดไฟล์ (.md)</button>
+      <button id="open" title="เปิดหน้าอ่านจากฉบับร่างในแท็บใหม่ เพื่อทดสอบก่อนเผยแพร่">ดูตัวอย่าง ↗</button>
+      <button id="publish" class="primary" title="เขียนไฟล์ p/รหัส.md บนเซิร์ฟเวอร์ให้เลย ผู้อ่านเปิดลิงก์ได้ทันที">เผยแพร่</button>
+      <a id="pub" class="btn" target="_blank" rel="noopener" href="#" hidden>ดูหน้าที่เผยแพร่ ↗</a>
+    </div>
+    <div id="pubMsg" class="msg err" hidden></div>
+    <div class="muted small">ข้อความบันทึกอัตโนมัติในเครื่องนี้ · <b>เผยแพร่</b> = เขียนไฟล์ <code>p/<span id="fname"></span></code> บนเซิร์ฟเวอร์ให้เลย แล้วส่งลิงก์ให้คนอื่นเปิดดูได้ · <b>ดูตัวอย่าง</b> = ทดสอบหน้าอ่านจากฉบับร่างก่อนเผยแพร่ · ชื่อเรื่อง = บรรทัดแรกของเนื้อหา</div>
+  </section>
+
+  <div class="tabs" role="tablist">
+    <button id="tw" class="on" role="tab">เขียน</button>
+    <button id="tp" role="tab">ตัวอย่าง</button>
+  </div>
+
+  <div class="ed">
+    <div id="wbox">
+      <div class="tools" id="tools"></div>
+      <textarea id="md" spellcheck="false" placeholder="เขียนด้วย Markdown ที่นี่…&#10;&#10;# หัวข้อ&#10;ข้อความ **ตัวหนา** *ตัวเอียง*&#10;- รายการ&#10;[ลิงก์](https://example.com)"></textarea>
+    </div>
+    <div id="pvbox">
+      <p class="ph hide-m"><b>ตัวอย่างที่ผู้อ่านจะเห็น</b><span id="pvnote"></span></p>
+      <iframe id="pv" title="ตัวอย่าง"></iframe>
+    </div>
+  </div>
+</main>
+
+<script src="md.js"></script>
+<script src="store.js"></script>
+<script>
+(async function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const ta=$('#md'),pv=$('#pv');
+let id=EP.idFromUrl(),page=id?EP.get(id):null,dirty=false,saveT,pvT,pvSeq=0,pvY=0;
+
+if(!id){
+  id=await EP.genId();
+  history.replaceState(null,'','edit.html?='+id);
+}
+ta.value=page?page.md:'';
+$('#idtxt').textContent='?='+id;
+$('#fname').textContent=id+'.md';
+$('#link').value=EP.shareUrl(id);
+$('#pub').href='view.php?='+id;
+
+/* ---------- ตัวอย่าง: ส่งไป preview.php (Parsedown เดียวกับหน้าอ่าน) ถ้าไม่ได้ใช้ตัวแปลงในเบราว์เซอร์แทน ---------- */
+pv.addEventListener('load',()=>{try{pv.contentWindow.scrollTo(0,pvY)}catch(e){}});
+function localDoc(md){
+  const body=md.trim()?MD.render(md):'<p class="empty">พิมพ์ข้อความทางซ้าย แล้วตัวอย่างจะแสดงที่นี่</p>';
+  return '<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+   +'<link rel="stylesheet" href="mdview.css"></head><body><style>.container{padding-top:1.1rem;padding-bottom:2rem}.container>:first-child{margin-top:0}</style><div class="container">'+body+'</div>'
+   +'<script>(function(){var t;try{t=localStorage.getItem("theme")}catch(e){}if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);document.body.style.fontSize="18px";'
+   +'document.querySelectorAll(".container a").forEach(function(a){a.target="_blank";a.rel="noopener noreferrer"})})()<\/script></body></html>';
+}
+/* ขอหน้า HTML ของข้อความจาก preview.php (full=true → มีปุ่มธีม/ขนาดตัวอักษร) ถ้าไม่ได้ใช้ตัวแปลงในเบราว์เซอร์แทน */
+async function getDoc(md,full){
+  try{
+    const c=new AbortController(),t=setTimeout(()=>c.abort(),5000);
+    const r=await fetch('preview.php'+(full?'?full=1':''),{method:'POST',body:md,signal:c.signal,headers:{'Content-Type':'text/plain;charset=UTF-8'}});
+    clearTimeout(t);
+    if(!r.ok)throw new Error(r.status);
+    const doc=await r.text();
+    if(!/<div class="container">/.test(doc))throw new Error('not php');   // เซิร์ฟเวอร์ส่งโค้ด PHP กลับมาเฉยๆ
+    return {doc,offline:false};
+  }catch(e){return {doc:localDoc(md),offline:true}}
+}
+async function renderPv(){
+  const my=++pvSeq,md=ta.value;
+  document.title=MD.titleOf(md)+' — Easypage';
+  const {doc,offline}=await getDoc(md,false);
+  if(my!==pvSeq)return;   // มีคำขอใหม่กว่าแล้ว
+  $('#pvnote').textContent=offline?'ตัวอย่างแบบออฟไลน์ (ไม่พบ PHP) — อาจต่างจากหน้าอ่านเล็กน้อย':'';
+  try{pvY=pv.contentWindow.scrollY||0}catch(e){}
+  pv.srcdoc=doc;
+}
+function updUi(){
+  const has=!!ta.value.trim();
+  $('#copy').disabled=$('#dl').disabled=!has;
+  $('#publish').disabled=!has;
+  $('#open').disabled=!has;
+  const cs=$('#cs');
+  const pend=!page||EP.isPending(page);
+  if(page){cs.hidden=false;cs.className='cs '+(pend?'N':'Y');cs.textContent=pend?(page.publishedAt?'แก้ไขหลังเผยแพร่':'ยังไม่เผยแพร่'):'เผยแพร่แล้ว'}
+  else cs.hidden=true;
+  $('#publish').textContent=page&&!pend?'เผยแพร่แล้ว ✓':'เผยแพร่';
+  $('#pub').hidden=!(page&&page.publishedAt);
+}
+
+/* ---------- บันทึก ---------- */
+function save(){
+  clearTimeout(saveT);
+  if(!dirty)return;
+  dirty=false;
+  if(!page&&!ta.value.trim())return;
+  const now=Date.now();
+  page={id,title:'',md:ta.value,created:page?page.created:now,updated:now,publishedAt:page?page.publishedAt:0};
+  const ok=EP.put(page);
+  $('#err').hidden=ok;
+  $('#state').textContent=ok?'✓ บันทึกในเครื่องแล้ว':'บันทึกไม่ได้';
+  updUi();
+}
+function changed(){
+  dirty=true;$('#state').textContent='กำลังแก้ไข…';
+  clearTimeout(saveT);saveT=setTimeout(save,600);
+  clearTimeout(pvT);pvT=setTimeout(renderPv,400);
+  updUi();
+}
+ta.addEventListener('input',changed);
+addEventListener('pagehide',save);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();EP.toast('บันทึกแล้ว')}
+});
+
+/* ---------- แชร์ ---------- */
+$('#copy').onclick=async()=>{save();EP.toast(await EP.copyText($('#link').value)?'คัดลอกลิงก์แล้ว':'คัดลอกไม่ได้ — เลือกลิงก์แล้วกด Ctrl/Cmd+C เอง')};
+$('#link').onfocus=e=>e.target.select();
+$('#publish').onclick=async()=>{
+  save();if(!page)return;
+  const btn=$('#publish'),msg=$('#pubMsg'),sent=page.updated;
+  btn.disabled=true;btn.textContent='กำลังเผยแพร่…';msg.hidden=true;
+  const r=await EP.publish({id:page.id,md:page.md,updated:sent});
+  page=EP.get(id)||page;
+  btn.disabled=false;updUi();
+  if(r.ok){EP.toast('เผยแพร่แล้ว — ส่งลิงก์ให้คนอื่นได้เลย')}
+  else{msg.textContent=r.error||'เผยแพร่ไม่สำเร็จ';msg.hidden=false}
+};
+$('#pub').onclick=()=>save();
+/* ดูตัวอย่าง = เปิดหน้าอ่านจากฉบับร่างในแท็บใหม่ (ไม่ต้องเผยแพร่ ไม่เก็บอะไรไว้ที่เซิร์ฟเวอร์) */
+$('#open').onclick=async()=>{
+  save();
+  const w=window.open('about:blank','_blank');   // เปิดทันทีตอนคลิก กัน popup blocker
+  if(!w){EP.toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาต popup แล้วลองอีกครั้ง');return}
+  let {doc}=await getDoc(ta.value,true);
+  const base=location.href.replace(/[?#].*$/,'').replace(/[^\/]*$/,'');
+  doc=doc.replace(/<head>/i,'<head><base href="'+base+'">');   // ให้ mdview.css โหลดได้จาก blob:
+  w.location.href=URL.createObjectURL(new Blob([doc],{type:'text/html;charset=utf-8'}));
+};
+$('#dl').onclick=()=>{
+  save();if(!page)return;
+  EP.download(id+'.md',EP.fileText(page),'text/markdown;charset=utf-8');
+  EP.toast('ดาวน์โหลด '+id+'.md แล้ว');
+};
+
+/* ---------- แถบเครื่องมือ ---------- */
+/* แทนข้อความช่วง [a,b) ด้วย text แล้วเลือกช่วง s1..s2 — ใช้ execCommand เพื่อให้ Ctrl/Cmd+Z ย้อนกลับได้ */
+function put(a,b,text,s1,s2){
+  ta.focus();ta.setSelectionRange(a,b);
+  let ok=false;
+  try{ok=text===''?document.execCommand('delete'):document.execCommand('insertText',false,text)}catch(e){}
+  if(!ok)ta.setRangeText(text,a,b,'end');
+  ta.setSelectionRange(s1==null?a+text.length:s1,s2==null?a+text.length:s2);
+  changed();
+}
+function lineRange(){
+  const v=ta.value,s=ta.selectionStart,e=ta.selectionEnd;
+  const a=v.lastIndexOf('\n',s-1)+1;
+  let b=v.indexOf('\n',e);if(b<0)b=v.length;
+  return [a,b];
+}
+/* ครอบข้อความที่เลือก (ไม่ได้เลือก = ใส่ข้อความตัวอย่างและเลือกไว้ พิมพ์ทับได้ทันที) */
+function wrap(x,y,ph){
+  const s=ta.selectionStart,e=ta.selectionEnd,sel=ta.value.slice(s,e)||ph;
+  put(s,e,x+sel+y,s+x.length,s+x.length+sel.length);
+}
+/* ใส่เครื่องหมายหน้าบรรทัด — บรรทัดว่าง = ใส่ข้อความตัวอย่างและเลือกไว้ พิมพ์ทับได้ทันที */
+function prefix(p,ph){
+  const [a,b]=lineRange(),seg=ta.value.slice(a,b);
+  if(!seg.trim()){
+    const m=typeof p==='function'?p(1):p;
+    put(a,b,m+ph,a+m.length,a+m.length+ph.length);return;
+  }
+  let n=0;
+  put(a,b,seg.split('\n').map(l=>l.trim()?(typeof p==='function'?p(++n):p)+l:l).join('\n'));
+}
+/* หัวข้อระดับ n: เปลี่ยนระดับถ้ามี # อยู่แล้ว, กดระดับเดิมซ้ำ = เอาออก, บรรทัดว่าง = ใส่ตัวอย่างให้พิมพ์ทับ */
+function heading(n){
+  const [a,b]=lineRange(),seg=ta.value.slice(a,b),mark='#'.repeat(n)+' ';
+  if(!seg.trim()){put(a,b,mark+'หัวข้อ',a+mark.length,a+mark.length+6);return}
+  const lines=seg.split('\n');
+  const same=lines.every(l=>!l.trim()||l.startsWith(mark));
+  put(a,b,lines.map(l=>{
+    const body=l.replace(/^#{1,6}[ \t]*/,'');
+    return same?body:(l.trim()?mark+body:l);
+  }).join('\n'));
+}
+function insert(t){const s=ta.selectionStart;put(s,ta.selectionEnd,t)}
+const T=[
+  ['H1','หัวข้อใหญ่ (#)',()=>heading(1)],
+  ['H2','หัวข้อรอง (##)',()=>heading(2)],
+  ['B','ตัวหนา',()=>wrap('**','**','ข้อความ')],
+  ['I','ตัวเอียง',()=>wrap('*','*','ข้อความ')],
+  ['S','ขีดฆ่า',()=>wrap('~~','~~','ข้อความ')],
+  ['🔗','ลิงก์',()=>{
+    const s=ta.selectionStart,e=ta.selectionEnd,sel=ta.value.slice(s,e)||'ข้อความลิงก์';
+    const u=s+sel.length+3;
+    put(s,e,'['+sel+'](https://)',u,u+8);
+  }],
+  ['•','รายการ',()=>prefix('- ','รายการ')],
+  ['1.','รายการเลข',()=>prefix(n=>n+'. ','รายการ')],
+  ['☑','ช่องติ๊ก',()=>prefix('- [ ] ','งาน')],
+  ['❝','อ้างอิง',()=>prefix('> ','อ้างอิง')],
+  ['</>','โค้ด',()=>{
+    const sel=ta.value.slice(ta.selectionStart,ta.selectionEnd);
+    sel.includes('\n')?wrap('```\n','\n```','โค้ด'):wrap('`','`','โค้ด');
+  }],
+  ['▦','ตาราง',()=>insert('\n| หัวข้อ 1 | หัวข้อ 2 |\n| --- | --- |\n| เซลล์ | เซลล์ |\n')],
+  ['—','เส้นคั่น',()=>insert('\n\n---\n\n')]
+];
+function toolBtn(t,tip,fn,cls){
+  const b=document.createElement('button');
+  b.type='button';b.textContent=t;b.title=tip;b.setAttribute('aria-label',tip);
+  if(cls)b.className=cls;
+  b.onmousedown=e=>e.preventDefault(); // ไม่ให้ textarea เสียโฟกัส/selection
+  b.onclick=fn;$('#tools').appendChild(b);
+}
+for(const [t,tip,fn] of T)toolBtn(t,tip,fn);
+/* ปุ่มอัปโหลด .md — โหลดไฟล์ markdown จากเครื่องเข้ามาในช่องเขียน (หรือลากไฟล์มาวางที่ช่องเขียนก็ได้) */
+const fi=document.createElement('input');
+fi.type='file';fi.accept='.md,.markdown,.txt,text/markdown,text/plain';fi.hidden=true;document.body.appendChild(fi);
+async function loadFile(f){
+  if(!f)return;
+  if(f.size>2*1024*1024){EP.toast('ไฟล์ใหญ่เกิน 2MB');return}
+  let t=await f.text();
+  if(t.includes('\u0000')){EP.toast('ไฟล์นี้ไม่ใช่ข้อความ (.md / .txt)');return}
+  t=t.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n');
+  if(ta.value.trim()&&!confirm('แทนที่ข้อความปัจจุบันด้วยไฟล์ “'+f.name+'” ?\n(กด Ctrl/Cmd+Z ในช่องเขียนเพื่อย้อนกลับได้)'))return;
+  put(0,ta.value.length,t,0,0);ta.scrollTop=0;
+  EP.toast('นำเข้า '+f.name+' แล้ว');
+}
+fi.onchange=()=>{loadFile(fi.files[0]);fi.value=''};
+toolBtn('อัปโหลด .md','เลือกไฟล์ .md จากเครื่องมาใส่ในช่องเขียน',()=>fi.click(),'up');
+ta.addEventListener('dragover',e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files'))e.preventDefault()});
+ta.addEventListener('drop',e=>{
+  const f=e.dataTransfer&&e.dataTransfer.files[0];
+  if(f){e.preventDefault();loadFile(f)}
+});
+/* ปุ่มล้าง (ขวาสุด) — ลบทั้งหมด; ยังกด Ctrl/Cmd+Z เพื่อย้อนกลับได้ */
+toolBtn('ล้าง','ลบข้อความทั้งหมด',()=>{
+  if(!ta.value)return;
+  if(!confirm('ลบข้อความทั้งหมดในหน้านี้?\n(กด Ctrl/Cmd+Z ในช่องเขียนเพื่อย้อนกลับได้)'))return;
+  put(0,ta.value.length,'');ta.focus();
+},'clr');
+
+/* ---------- Enter ในรายการ: ต่อรายการถัดไปให้อัตโนมัติ, Enter บนรายการว่าง = ออกจากรายการ ---------- */
+ta.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||e.shiftKey||e.ctrlKey||e.metaKey||e.altKey||e.isComposing||ta.selectionStart!==ta.selectionEnd)return;
+  const v=ta.value,pos=ta.selectionStart,a=v.lastIndexOf('\n',pos-1)+1;
+  let b=v.indexOf('\n',pos);if(b<0)b=v.length;
+  const line=v.slice(a,b);
+  const m=line.match(/^(\s*)(?:([-*+])|(\d{1,9})([.)])|(>))([ \t]+)(\[[ xX]\][ \t]+)?/);
+  if(!m||pos-a<m[0].length)return;                      // ไม่ใช่รายการ / เคอร์เซอร์อยู่หน้าเครื่องหมาย → Enter ปกติ
+  e.preventDefault();
+  if(!line.slice(m[0].length).trim()){put(a,b,'');return}   // รายการว่าง → ลบเครื่องหมาย กลับสู่ข้อความปกติ
+  const mk=m[2]?m[2]:m[3]?(+m[3]+1)+m[4]:'>';
+  const next='\n'+m[1]+mk+m[6]+(m[7]?'[ ] ':'');
+  put(pos,pos,next);
+});
+
+/* ---------- แท็บมือถือ ---------- */
+function tab(t){
+  document.body.dataset.tab=t;
+  $('#tw').classList.toggle('on',t==='write');$('#tp').classList.toggle('on',t==='preview');
+}
+$('#tw').onclick=()=>tab('write');$('#tp').onclick=()=>tab('preview');
+
+renderPv();updUi();
+if(page)$('#state').textContent='บันทึกล่าสุด '+EP.fmtDate(page.updated);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,292 @@
+/* [easypage] สำเนาของ ai/mdparse/style.css — ปรับ padding บนให้กระชับ (จุดที่แก้มีป้าย [easypage]) */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100..900&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #faf9f5;
+  --fg: #1d1d1f;
+  --muted: #6e6e73;
+  --border: #e5e5e7;
+  --link: #0071e3;
+  --link-hover: #0077ed;
+  --code-bg: #f5f0e8;
+  --radius: 12px;
+  --font-size: 17px;
+  --h1color: #a9583e;
+  --h2color: #cc785c;
+  --h3color: #17437d;
+}
+
+[data-theme="dark"] {
+  --bg: #181715;
+  --fg: #f5f5f7;
+  --muted: #86868b;
+  --border: #2d2d2d;
+  --link: #205dac;
+  --link-hover: #47a8ff;
+  --code-bg: #252320;
+  --h3color: #005cb3;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: var(--font-size);
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s, color 0.2s;
+}
+
+.theme-wrap {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+/* [easypage] เนื้อหาถัดจากแถบปุ่มไม่ต้องเว้นบนซ้ำ (หัวข้อแรกมี margin-top ใหญ่) */
+.theme-wrap + * { margin-top: 0; }
+
+.theme-toggle,
+.font-btn {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.3em 0.9em;
+  font-size: 0.85em;
+  color: var(--fg);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.theme-toggle:hover,
+.font-btn:hover { background: var(--border); }
+
+/* ========== CONTENT ========== */
+.container {
+  max-width: 41em;   /* ผูกกับขนาดตัวอักษร: กด A+ แล้วกว้างขึ้นตาม (จำนวนตัวอักษรต่อบรรทัดคงเดิม) แต่ไม่เกินความกว้างจอ */
+  margin: 0 auto;
+  padding: 1rem 2rem 6rem;   /* [easypage] ลด padding บน (เดิม 3rem) */
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 1.5em 0 0.6em;
+  color: var(--fg);
+}
+h1 { color: var(--h1color); font-family: "Noto Sans Thai"; font-size: 2.2em; margin-top: 1.2em; margin-bottom: 0.4em; line-height: 1.4em; }
+h2 { color: var(--h2color); font-family: "Noto Sans Thai"; font-size: 1.8em; margin-top: 1.0em; }
+h3 { color: var(--h3color); font-family: "Noto Sans Thai"; font-size: 1.4em; }
+h4, h5, h6 { font-size: 1em; color: var(--muted); font-weight: 600; }
+
+p { margin: 1em 0; }
+
+a { color: var(--link); text-decoration: none; }
+a:hover { color: var(--link-hover); text-decoration: underline; }
+
+hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+
+ul, ol { padding-left: 1.6em; margin: 1em 0; }
+li { margin: 0.4em 0; }
+
+blockquote {
+  border-left: 3px solid var(--border);
+  padding: 0.6em 1.2em;
+  color: var(--muted);
+  margin: 1.5em 0;
+  font-style: italic;
+}
+
+code {
+  background: var(--code-bg);
+  border-radius: 6px;
+  padding: 0.2em 0.45em;
+  font-size: 0.85em;
+  font-family: "SFMono-Regular", Consolas, monospace;
+}
+pre {
+  background: var(--code-bg);
+  border-radius: var(--radius);
+  padding: 1.2em 1.4em;
+  overflow-x: auto;
+  margin: 1.5em 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+pre code { background: none; padding: 0; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5em 0;
+  font-size: 0.95em;
+  table-layout: fixed; /* บีบคอลัมน์ให้พอดีกรอบเสมอ ไม่ดันความกว้างล้น */
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.6em 1em;
+  text-align: left;
+  word-break: break-word;   /* ตัดคำยาว/ไม่มีช่องว่างให้พอดีคอลัมน์ */
+  overflow-wrap: break-word;
+}
+th { background: var(--code-bg); font-weight: 600; }
+
+img { max-width: 100%; border-radius: var(--radius); }
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 600px) {
+  body { font-size: 15px; }
+  .container { padding: 0.75rem 1rem 4rem; }   /* [easypage] เดิม 1.5rem บน */
+  h1 { font-size: 1.8em; }
+  h2 { font-size: 1.3em; }
+  table { font-size: 0.85em; }
+  th, td { padding: 0.4em 0.6em; }
+}
+
+/* ห่อตารางไว้ใน wrapper: ถ้าตารางมีคอลัมน์เยอะจนยังแน่นเกินไป
+   จะ scroll ได้เฉพาะตัวตาราง ไม่ใช่เลื่อนทั้งหน้า */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 1.5em 0;
+}
+.table-wrap table {
+  margin: 0; /* margin ย้ายไปอยู่ที่ wrapper แล้ว */
+}
+
+/* ตัดข้อความยาวใน blockquote และ link */
+blockquote, a {
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
+
+/* กดที่กล่องโค้ดเพื่อคัดลอก */
+pre.copyable { cursor: copy; }
+pre.copyable:hover { filter: brightness(0.97); }
+.copy-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: var(--fg);
+  color: var(--bg);
+  padding: 0.5em 1.2em;
+  border-radius: 999px;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 50;
+}
+.copy-toast.show { opacity: 1; }
+
+/* ========== หน้ารายการเอกสาร (listmd.php) — ใช้ร่วมกับหน้าอ่านด้วย style.css ไฟล์เดียว ========== */
+/* หน้ารายการใช้ฟอนต์ชุดเดิมของตัวเอง (มี Noto Sans Thai) ส่วนหน้าอ่านใช้ชุดด้านบน */
+.list-page {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Thai", sans-serif;
+  font-size: 18px;
+}
+.list-page h1 { margin-top: 0; margin-bottom: 0.3em; }
+.subtitle {
+  color: var(--muted);
+  font-size: 0.9em;
+  margin-bottom: 2rem;
+}
+
+.count {
+  display: inline-block;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  padding: 0.15em 0.8em;
+  font-size: 0.7em;
+  color: var(--muted);
+  margin-left: 0.6rem;
+  vertical-align: middle;
+}
+
+/* ========== รายการเอกสาร ========== */
+.doc-list {
+  border-top: 1px solid var(--border);
+}
+
+.doc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1em 0.2em;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: var(--fg);
+  transition: background 0.15s;
+}
+
+.doc-row:hover {
+  background: var(--code-bg);
+  text-decoration: none;   /* กันกฎ a:hover ของหน้าอ่าน (ขีดเส้นใต้ลิงก์) มาทับ */
+  color: var(--fg);
+}
+
+.doc-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6em;
+  min-width: 0;
+}
+
+.doc-name-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  min-width: 0;
+}
+
+.doc-filename {
+  font-size: 0.78em;
+  font-weight: 400;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.doc-title {
+  font-size: 1.02em;
+  font-weight: 600;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.doc-icon {
+  flex-shrink: 0;
+  opacity: 0.85;
+  margin-top: 0.1em;
+}
+
+.doc-size {
+  flex-shrink: 0;
+  font-size: 0.82em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 0.95em;
+  padding: 2rem 0;
+  text-align: center;
+}
+@media (max-width: 600px) {
+  .doc-row { padding: 0.85em 0.1em; }
+}

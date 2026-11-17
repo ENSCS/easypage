@@ -1,0 +1,62 @@
+/* Easypage — สไตล์กลาง (tokens + องค์ประกอบพื้นฐาน) ตาม _box/STYLE-GUIDE.md */
+:root{
+  --bg:#f6f7f9;--panel:#fff;--text:#1d2530;--muted:#667085;--line:#e3e6ea;
+  --accent:#2457d6;--accent-soft:#e8eefc;--warn:#b42318;--hover:#f1f4f9;--hl:#c2410c;
+  --ok:#0f7b3f;--ok-soft:#e3f5ea;--wait:#b54708;--wait-soft:#fdf0dc;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#14171c;--panel:#1c2027;--text:#e6e9ee;--muted:#9aa4b2;--line:#2c323b;
+    --accent:#7aa2ff;--accent-soft:#222c45;--warn:#ff8a80;--hover:#232831;--hl:#fbbf24;
+    --ok:#5fd38d;--ok-soft:#1b3326;--wait:#fbbf24;--wait-soft:#3a2f14;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI","Sarabun","Noto Sans Thai",sans-serif}
+[hidden]{display:none!important}
+a{color:var(--accent)}
+h1{font-size:18px;font-weight:600;margin:0}
+h2{font-size:16px;font-weight:600;margin:0 0 8px}
+
+header{position:sticky;top:0;z-index:5;background:var(--panel);border-bottom:1px solid var(--line);padding:12px max(16px,env(safe-area-inset-right)) 12px max(16px,env(safe-area-inset-left))}
+.hrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;max-width:var(--maxw,1200px);margin:0 auto}
+.hrow h1 a{color:inherit;text-decoration:none}
+.grow{flex:1 1 220px;min-width:0}
+main{max-width:var(--maxw,1200px);margin:0 auto;padding:16px max(16px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:grid;gap:16px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+button,.btn{font:inherit;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;text-decoration:none;display:inline-block;white-space:nowrap}
+button:hover,.btn:hover{background:var(--hover)}
+button.primary,.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.primary:hover,.btn.primary:hover{filter:brightness(1.08);background:var(--accent)}
+button.danger{color:var(--warn)}
+button:disabled,.btn[aria-disabled=true]{opacity:.45;cursor:not-allowed;pointer-events:none}
+button.sm,.btn.sm{padding:4px 10px;font-size:13px;border-radius:6px}
+
+input[type=text],input[type=search],textarea,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 12px;min-width:0}
+input[type=text]:focus,input[type=search]:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
+
+.cs{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12.5px;white-space:nowrap}
+.cs.Y{background:var(--ok-soft);color:var(--ok)}
+.cs.N{background:var(--wait-soft);color:var(--wait)}
+
+.msg{padding:8px 12px;border-radius:8px;font-size:14px}
+.msg.ok{background:var(--ok-soft);color:var(--ok)}
+.msg.err{background:var(--wait-soft);color:var(--warn)}
+.msg.warn{background:var(--wait-soft);color:var(--wait)}
+
+.drop{border:2px dashed var(--line);border-radius:10px;padding:18px;text-align:center;color:var(--muted);cursor:pointer}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 18px;border-radius:999px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:50;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+
+@media(max-width:860px){
+  input[type=text],input[type=search],textarea,select{font-size:16px}
+  button,.btn{padding:10px 14px}
+  button.sm,.btn.sm{padding:6px 12px}
+}
