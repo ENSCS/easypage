@@ -4,6 +4,8 @@
 // รับ markdown ดิบทาง POST (body) → ส่งหน้า HTML เต็ม เหมือน view.php ทุกประการ (ไม่เก็บอะไรไว้ที่เซิร์ฟเวอร์)
 // ค่าเริ่มต้น = แสดงเฉพาะเนื้อหา (ใส่ใน iframe ของหน้า edit) · ?full=1 = มีปุ่มธีม/ขนาดตัวอักษรเหมือนหน้าอ่านจริง (ปุ่ม "เปิดดู")
 // ========================================
+$_SERVER['HTTP_ACCEPT'] = 'application/json';
+require __DIR__ . '/pin.php';   // ล็อกด้วย PIN (view.php ยังเปิดสาธารณะ)
 require_once __DIR__ . '/render.php';
 
 header('X-Robots-Tag: noindex');

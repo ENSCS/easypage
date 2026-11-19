@@ -15,6 +15,10 @@
 // ช่วงนี้ “ทุกคนใช้ได้” (ยังไม่มีระบบสิทธิ์): ใครก็เห็นและแก้ได้ทุกหน้า — ตั้งใน config.php (ดู config.sample.php)
 // ทุกคำขอเขียน: ต้องมี header X-Easypage: 1 และ Origin ตรง Host (กัน cross-site) · จำกัดจำนวนครั้งต่อ IP
 // ========================================
+// ล็อกด้วย PIN (ยังไม่ผ่าน → 401 JSON เสมอ ไม่ใช่หน้าใส่ PIN)
+$_SERVER['HTTP_ACCEPT'] = 'application/json';
+require __DIR__ . '/pin.php';
+
 header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
 header('X-Robots-Tag: noindex');

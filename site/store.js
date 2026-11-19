@@ -30,10 +30,18 @@ const shortUrl=id=>SHORT_BASE+id;
 const NET_ERR='ติดต่อเซิร์ฟเวอร์ไม่ได้ — ต้องเปิดผ่านเว็บเซิร์ฟเวอร์ที่มี PHP (ไม่ใช่เปิดไฟล์ตรงๆ)';
 const qs=o=>Object.keys(o).filter(k=>o[k]!==undefined&&o[k]!==null).map(k=>encodeURIComponent(k)+'='+encodeURIComponent(o[k])).join('&');
 
+/* session PIN หมด/ยังไม่ผ่าน → ไปหน้า .php (ซึ่งจะขึ้นหน้าใส่ PIN) · กันลูป: ไปได้ไม่เกิน 1 ครั้งใน 15 วินาที ไม่งั้นแจ้งข้อความแทน */
+function needPin(){
+  let go=true;
+  try{const t=+sessionStorage.getItem('easypage:pinjump')||0;if(Date.now()-t<15000)go=false;else sessionStorage.setItem('easypage:pinjump',String(Date.now()))}catch(e){}
+  if(go){location.replace(/edit\.(php|html)$/.test(location.pathname)?'edit.php'+location.search:'manage.php');}
+  return {ok:false,status:401,error:'pin_required — ต้องใส่ PIN: เปิด manage.php แล้วล้างแคช'};
+}
 async function read(a,params){
   try{
     const r=await fetch('api.php?'+qs(Object.assign({a},params||{})),{cache:'no-store'});
     const j=await r.json().catch(()=>null);
+    if(j&&j.error==='pin_required')return needPin();
     if(!j)return {ok:false,status:r.status,error:'เซิร์ฟเวอร์ตอบกลับไม่ถูกต้อง (ต้องมี PHP)'};
     j.status=r.status;return j;
   }catch(e){return {ok:false,status:0,error:NET_ERR}}
@@ -47,6 +55,7 @@ async function write(a,id,params,body){
       const r=await fetch('api.php?'+qs(Object.assign({a,id},params||{})),{method:'POST',
         headers:{'X-Easypage':'1','X-Easypage-Password':encodeURIComponent(pw),'Content-Type':'text/plain;charset=UTF-8'},body:body||''});
       j=await r.json().catch(()=>null);
+      if(j&&j.error==='pin_required')return needPin();
       if(j)j.status=r.status;
     }catch(e){return {ok:false,status:0,error:NET_ERR}}
     if(j&&j.needPassword){

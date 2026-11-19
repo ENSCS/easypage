@@ -1,3 +1,6 @@
+# เปิดโฟลเดอร์ (…/easypage/) → หน้าจัดการ index.php ก่อนเสมอ
+DirectoryIndex index.php index.html
+
 # ให้เบราว์เซอร์ตรวจไฟล์หน้าเว็บใหม่ทุกครั้ง (ใช้ ETag/Last-Modified — ไม่โหลดซ้ำถ้าไม่เปลี่ยน)
 # กัน index.html ใหม่ไปคู่กับ store.js เก่าที่ค้างแคช แล้วหน้าจัดการแสดงรายการไม่ได้ (Apache + mod_headers)
 <IfModule mod_headers.c>
