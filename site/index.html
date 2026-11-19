@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>จัดการ — Easypage</title>
-<link rel="stylesheet" href="base.css?v=8">
+<link rel="stylesheet" href="base.css?v=9">
 <style>
 :root{--maxw:1100px}
 #q{flex:1 1 240px}
@@ -75,8 +75,8 @@ td.acts .btn,td.acts button{margin:0 2px 2px 0}
   </div>
 </main>
 
-<script src="md.js?v=8"></script>
-<script src="store.js?v=8"></script>
+<script src="md.js?v=9"></script>
+<script src="store.js?v=9"></script>
 <script>
 (function(){
 'use strict';
@@ -136,6 +136,7 @@ function draw(){
     };
     mk('แก้ไข','',null,'edit.html?='+p.id);
     if(p.state!=='draft')mk('ดู','',null,'view.php?='+p.id);
+    mk('ลิงก์ย่อ','',async()=>{const u=EP.shortUrl(p.id);EP.toast(await EP.copyText(u)?'คัดลอกลิงก์ย่อแล้ว: '+u:'คัดลอกไม่ได้')});
     if(p.state!=='draft'){
       if(p.state==='closed')mk('เปิดอีกครั้ง','',async()=>{
         const r=await EP.setClosed(p.id,false);await reload();

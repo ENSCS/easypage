@@ -22,6 +22,9 @@ function idFromUrl(){
   return m?m[1].toLowerCase():null;
 }
 const shareUrl=id=>location.href.replace(/[?#].*$/,'').replace(/[^\/]*$/,'')+'view.php?='+id;
+/* ลิงก์ย่อ: ระบบย่อลิงก์แยกต่างหาก รับรหัส 5 ตัวของเราไปต่อท้ายได้เลย — เปลี่ยนโดเมน/พาธที่นี่ที่เดียว */
+const SHORT_BASE='https://9fly.tv/p/';
+const shortUrl=id=>SHORT_BASE+id;
 
 /* ---------- เรียก api.php ---------- */
 const NET_ERR='ติดต่อเซิร์ฟเวอร์ไม่ได้ — ต้องเปิดผ่านเว็บเซิร์ฟเวอร์ที่มี PHP (ไม่ใช่เปิดไฟล์ตรงๆ)';
@@ -141,6 +144,6 @@ function toast(msg){
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1800);
 }
 
-g.EP={ID_RE,randId,idFromUrl,shareUrl,list,get,save,publish,setClosed,remove,
+g.EP={ID_RE,randId,idFromUrl,shareUrl,shortUrl,list,get,save,publish,setClosed,remove,
   bufSet,bufGet,bufClear,migrateLocal,fmtExpiry,fileName,download,fmtDate,copyText,toast};
 })(window);
