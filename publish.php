@@ -4,6 +4,8 @@
 //   publish (ค่าเริ่มต้น)  เขียน p/xxxxx.md บนเซิร์ฟเวอร์ (POST body = markdown ดิบ) + เปิดให้อ่านได้
 //   close                  ปิดการเผยแพร่ (ไฟล์ธง p/xxxxx.closed → view.php แจ้งว่าปิดอยู่ ไม่แสดงบทความ)
 //   open                   เปิดกลับ (ลบไฟล์ธง)
+//   publish รับ &exp=YYYY-MM-DD[&exptime=HH:MM] = วันหมดอายุ (เวลาไทย; ไม่ใส่เวลา = หมดสิ้นวันนั้น 23:59:59)
+//            &exp= (ว่าง) = ไม่หมดอายุ  — เก็บเป็นไฟล์ p/xxxxx.exp  · หมดอายุแล้ว view.php แจ้งว่าหมดอายุ (เนื้อหายังอยู่ ขยายวันแล้วเปิดกลับได้)
 //
 // ใครเรียกได้ — ตั้งที่ config.php คีย์ 'publish' (ดู config.sample.php):
 //   'local'    (ค่าเริ่มต้นถ้าไม่มี config.php) เฉพาะเครื่องตัวเอง (localhost) — เซิร์ฟเวอร์จริงจะปฏิเสธทุกคำขอ
@@ -124,6 +126,7 @@ $dir     = __DIR__ . '/p';
 $file    = $dir . '/' . $id . '.md';
 $marker  = $dir . '/' . $id . '.closed';
 $keyfile = $dir . '/' . $id . '.key';
+$expfile = $dir . '/' . $id . '.exp';
 
 // ---------- เจ้าของหน้า (โหมด open): กุญแจสุ่มที่เบราว์เซอร์ผู้เผยแพร่ครั้งแรกถือไว้ ----------
 $claimHash = null;
@@ -179,6 +182,29 @@ if (!mb_check_encoding($md, 'UTF-8')) {
     ep_out(400, array('ok' => false, 'error' => 'ข้อความต้องเป็น UTF-8'));
 }
 
+// ---------- วันหมดอายุ (ตรวจก่อนเขียนอะไรทั้งหมด) ----------
+$expAt = null;      // null = ไม่แตะ · 0 = ลบ (ไม่หมดอายุ) · >0 = ตั้งเวลาหมดอายุ (epoch)
+$expTimed = false;
+if (isset($_GET['exp'])) {
+    $d = (string)$_GET['exp'];
+    $t = isset($_GET['exptime']) ? (string)$_GET['exptime'] : '';
+    if ($d === '') {
+        $expAt = 0;
+    } else {
+        $okD = preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $d, $dm) && checkdate((int)$dm[2], (int)$dm[3], (int)$dm[1]);
+        $okT = $t === '' || preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $t);
+        if (!$okD || !$okT) {
+            ep_out(400, array('ok' => false, 'error' => 'รูปแบบวันหมดอายุไม่ถูกต้อง'));
+        }
+        $dt = DateTime::createFromFormat('Y-m-d H:i:s', $d . ' ' . ($t !== '' ? $t . ':00' : '23:59:59'), new DateTimeZone('Asia/Bangkok'));
+        $expAt = $dt ? $dt->getTimestamp() : 0;
+        if ($expAt <= time()) {
+            ep_out(400, array('ok' => false, 'error' => 'วันหมดอายุต้องเป็นเวลาในอนาคต'));
+        }
+        $expTimed = $t !== '';
+    }
+}
+
 // เขียนไฟล์ชั่วคราวแล้ว rename → ผู้อ่านไม่เห็นไฟล์ที่เขียนค้างครึ่งเดียว
 ep_prepare_dir($dir);
 $tmp = tempnam($dir, '.ep');
@@ -192,6 +218,13 @@ if (!@rename($tmp, $file)) {
     ep_out(500, array('ok' => false, 'error' => 'บันทึกไฟล์ p/' . $id . '.md ไม่สำเร็จ'));
 }
 
+if ($expAt === 0) {
+    @unlink($expfile);
+} elseif ($expAt > 0) {
+    if (file_put_contents($expfile, json_encode(array('at' => $expAt, 'time' => $expTimed)), LOCK_EX) === false) {
+        ep_out(500, array('ok' => false, 'error' => 'เผยแพร่แล้ว แต่บันทึกวันหมดอายุไม่สำเร็จ'));
+    }
+}
 ep_claim($keyfile, $claimHash);
 @unlink($marker);   // เผยแพร่ = เปิดให้อ่านได้ (ถ้าเคยปิดไว้จะเปิดกลับ)
 ep_out(200, array('ok' => true, 'id' => $id, 'bytes' => strlen($md), 'state' => 'open', 'url' => 'view.php?=' . $id));

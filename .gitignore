@@ -11,4 +11,5 @@ _box/
 p/*.md
 p/*.closed
 p/*.key
+p/*.exp
 !p/start.md

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>จัดการ — Easypage</title>
-<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="base.css?v=3">
 <style>
 :root{--maxw:1100px}
 #q{flex:1 1 240px}
@@ -62,7 +62,7 @@ td.acts .btn,td.acts button{margin:0 2px 2px 0}
       <div class="stat"><b id="sAll">0</b><span>หน้าทั้งหมด</span></div>
       <div class="stat wait"><b id="sPend">0</b><span>ยังไม่เผยแพร่ / แก้ไขแล้ว</span></div>
       <div class="stat ok"><b id="sDone">0</b><span>เผยแพร่แล้ว</span></div>
-      <div class="stat"><b id="sClosed">0</b><span>ปิดอยู่</span></div>
+      <div class="stat"><b id="sClosed">0</b><span>ปิด / หมดอายุ</span></div>
     </div>
   </section>
 
@@ -75,8 +75,8 @@ td.acts .btn,td.acts button{margin:0 2px 2px 0}
   </div>
 </main>
 
-<script src="md.js"></script>
-<script src="store.js"></script>
+<script src="md.js?v=3"></script>
+<script src="store.js?v=3"></script>
 <script>
 (function(){
 'use strict';
@@ -91,7 +91,7 @@ function snippet(md){
 function say(t,ok){const m=$('#note');m.hidden=false;m.className='msg '+(ok?'ok':'err');m.textContent=t}
 function draw(){
   const all=EP.list(),qs=$('#q').value.trim().toLowerCase();
-  const isClosed=p=>!!(p.closed&&p.publishedAt);
+  const isClosed=p=>!!(p.closed&&p.publishedAt)||EP.isExpired(p);
   const closedN=all.filter(isClosed).length,pend=all.filter(p=>!isClosed(p)&&EP.isPending(p)).length;
   $('#sAll').textContent=all.length;$('#sPend').textContent=pend;$('#sClosed').textContent=closedN;$('#sDone').textContent=all.length-pend-closedN;
   const rows=all.filter(p=>!qs||p.id.includes(qs)||p.title.toLowerCase().includes(qs)||p.md.toLowerCase().includes(qs));
@@ -101,7 +101,7 @@ function draw(){
   em.textContent=all.length?'ไม่พบรายการที่ค้นหา':'ยังไม่มีหน้าที่เขียนไว้ — กด “+ เขียนใหม่” เพื่อเริ่ม หรือเปิดหน้าเขียนแล้วอัปโหลดไฟล์ .md';
   for(const p of rows){
     const tr=document.createElement('tr');
-    const closed=isClosed(p),pending=EP.isPending(p),title=p.title||MD.titleOf(p.md);
+    const closed=!!(p.closed&&p.publishedAt),expired=!closed&&EP.isExpired(p),pending=EP.isPending(p),title=p.title||MD.titleOf(p.md);
     const td=(cls,label)=>{const c=document.createElement('td');if(cls)c.className=cls;c.dataset.label=label;tr.appendChild(c);return c};
     const a=document.createElement('a');a.href='#';a.textContent='?='+p.id;a.title='คัดลอกลิงก์แชร์';
     a.onclick=async e=>{e.preventDefault();EP.toast(await EP.copyText(EP.shareUrl(p.id))?'คัดลอกลิงก์แล้ว':'คัดลอกไม่ได้')};
@@ -111,8 +111,9 @@ function draw(){
     const sm=document.createElement('small');sm.textContent=snippet(p.md);
     box.append(na);if(sm.textContent)box.append(sm);n.appendChild(box);
     td('date','แก้ไข').textContent=EP.fmtDate(p.updated);
-    const st=document.createElement('span');st.className='cs '+(closed?'C':pending?'N':'Y');st.textContent=closed?'ปิดอยู่':pending?(p.publishedAt?'แก้ไขหลังเผยแพร่':'ยังไม่เผยแพร่'):'เผยแพร่แล้ว';
-    td('','สถานะ').appendChild(st);
+    const st=document.createElement('span');st.className='cs '+(closed?'C':expired?'E':pending?'N':'Y');st.textContent=closed?'ปิดอยู่':expired?'หมดอายุแล้ว':pending?(p.publishedAt?'แก้ไขหลังเผยแพร่':'ยังไม่เผยแพร่'):'เผยแพร่แล้ว';
+    const stc=td('','สถานะ');stc.appendChild(st);
+    if(p.publishedAt&&EP.expiryOf(p)){const sm2=document.createElement('small');sm2.className='muted';sm2.style.display='block';sm2.textContent=(expired?'หมดอายุเมื่อ ':'จะหมดอายุ ')+EP.fmtExpiry(p);stc.appendChild(sm2)}
     const ac=td('acts','จัดการ');
     const mk=(t,cls,fn,href)=>{
       const e=document.createElement(href?'a':'button');e.className=(cls||'')+' sm'+(href?' btn':'');e.textContent=t;

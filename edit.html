@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>เขียน — Easypage</title>
-<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="base.css?v=3">
 <style>
 :root{--maxw:1500px}
 #state{font-size:13px;color:var(--muted);white-space:nowrap}
@@ -13,6 +13,8 @@
 .share .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .share input{flex:1 1 280px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:14px}
 .share .id{font-weight:600;font-variant-numeric:tabular-nums}
+.share .exp input{flex:0 0 auto}
+.share .exp label{white-space:nowrap}
 .tabs{display:none;gap:8px}
 .tabs button{flex:1;padding:10px 14px}
 .tabs button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
@@ -61,8 +63,15 @@
       <button id="publish" class="primary" title="เขียนไฟล์ p/รหัส.md บนเซิร์ฟเวอร์ให้เลย ผู้อ่านเปิดลิงก์ได้ทันที">เผยแพร่</button>
       <a id="pub" class="btn" target="_blank" rel="noopener" href="#" hidden>ดูหน้าที่เผยแพร่ ↗</a>
     </div>
+    <div class="row exp">
+      <label for="expDate"><b>วันหมดอายุของลิงก์</b></label>
+      <input id="expDate" type="date">
+      <input id="expTime" type="time" aria-label="เวลาหมดอายุ (ไม่บังคับ)" disabled>
+      <button id="expClr" class="sm" type="button" hidden>ล้าง</button>
+      <span class="muted small" id="expHint"></span>
+    </div>
     <div id="pubMsg" class="msg err" hidden></div>
-    <div class="muted small">ข้อความบันทึกอัตโนมัติในเครื่องนี้ · <b>เผยแพร่</b> = เขียนไฟล์ <code>p/<span id="fname"></span></code> บนเซิร์ฟเวอร์ให้เลย แล้วส่งลิงก์ให้คนอื่นเปิดดูได้ · <b>ดูตัวอย่าง</b> = ทดสอบหน้าอ่านจากฉบับร่างก่อนเผยแพร่ · ชื่อเรื่อง = บรรทัดแรกของเนื้อหา</div>
+    <div class="muted small">ข้อความบันทึกอัตโนมัติในเครื่องนี้ · <b>เผยแพร่</b> = เขียนไฟล์ <code>p/<span id="fname"></span></code> บนเซิร์ฟเวอร์ให้เลย แล้วส่งลิงก์ให้คนอื่นเปิดดูได้ · <b>ดูตัวอย่าง</b> = ทดสอบหน้าอ่านจากฉบับร่างก่อนเผยแพร่ · <b>วันหมดอายุ</b> = เลยเวลานั้นผู้อ่านจะเห็นหน้าแจ้งว่าหมดอายุ (ไม่ตั้ง = ไม่หมดอายุ; ตั้งแล้วกด “เผยแพร่” อีกครั้งเพื่ออัปเดต) · ชื่อเรื่อง = บรรทัดแรกของเนื้อหา</div>
   </section>
 
   <div class="tabs" role="tablist">
@@ -82,8 +91,8 @@
   </div>
 </main>
 
-<script src="md.js"></script>
-<script src="store.js"></script>
+<script src="md.js?v=3"></script>
+<script src="store.js?v=3"></script>
 <script>
 (async function(){
 'use strict';
@@ -96,6 +105,9 @@ if(!id){
   history.replaceState(null,'','edit.html?='+id);
 }
 ta.value=page?page.md:'';
+$('#expDate').value=page&&page.expDate||'';
+$('#expTime').value=page&&page.expTime||'';
+$('#expDate').min=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'});
 $('#idtxt').textContent='?='+id;
 $('#fname').textContent=id+'.md';
 $('#link').value=EP.shareUrl(id);
@@ -138,12 +150,25 @@ function updUi(){
   $('#open').disabled=!has;
   const cs=$('#cs');
   const pend=!page||EP.isPending(page);
-  const closed=!!(page&&page.closed&&page.publishedAt);
-  if(page){cs.hidden=false;cs.className='cs '+(closed?'C':pend?'N':'Y');cs.textContent=closed?'ปิดอยู่ (กด “เผยแพร่” เพื่อเปิดอีกครั้ง)':pend?(page.publishedAt?'แก้ไขหลังเผยแพร่':'ยังไม่เผยแพร่'):'เผยแพร่แล้ว'}
+  const closed=!!(page&&page.closed&&page.publishedAt),expired=!closed&&EP.isExpired(page);
+  if(page){cs.hidden=false;cs.className='cs '+(closed?'C':expired?'E':pend?'N':'Y');cs.textContent=closed?'ปิดอยู่ (กด “เผยแพร่” เพื่อเปิดอีกครั้ง)':expired?'หมดอายุแล้ว (ตั้งวันใหม่ แล้วกด “เผยแพร่”)':pend?(page.publishedAt?'แก้ไขหลังเผยแพร่':'ยังไม่เผยแพร่'):'เผยแพร่แล้ว'}
   else cs.hidden=true;
-  $('#publish').textContent=page&&!pend&&!closed?'เผยแพร่แล้ว ✓':'เผยแพร่';
+  $('#publish').textContent=page&&!pend&&!closed&&!expired?'เผยแพร่แล้ว ✓':'เผยแพร่';
+  updExp();
   $('#pub').hidden=!(page&&page.publishedAt);
 }
+
+/* ---------- วันหมดอายุ ---------- */
+function updExp(){
+  const d=$('#expDate').value,tm=$('#expTime');
+  tm.disabled=!d;if(!d)tm.value='';
+  $('#expClr').hidden=!d;
+  const p={expDate:d,expTime:tm.value};
+  $('#expHint').textContent=d?'หมดอายุ '+EP.fmtExpiry(p)+(tm.value?'':' (สิ้นวัน 23:59 น.)')+' · เวลาประเทศไทย':'ไม่ตั้ง = ลิงก์ไม่หมดอายุ · ไม่ใส่เวลา = หมดสิ้นวันนั้น';
+}
+$('#expDate').addEventListener('change',()=>{updExp();changed()});
+$('#expTime').addEventListener('change',()=>{updExp();changed()});
+$('#expClr').onclick=()=>{$('#expDate').value='';$('#expTime').value='';updExp();changed()};
 
 /* ---------- บันทึก ---------- */
 function save(){
@@ -154,7 +179,7 @@ function save(){
   const now=Date.now();
   // ใช้ record ล่าสุดในเครื่องเป็นฐาน (มี key / publishedAt / closed ที่อาจเพิ่งเปลี่ยนจากแท็บอื่นหรือจากการเผยแพร่) แล้วทับด้วยข้อความใหม่
   const base=EP.get(id)||page||{};
-  page=Object.assign({},base,{id,title:'',md:ta.value,created:base.created||now,updated:now});
+  page=Object.assign({},base,{id,title:'',md:ta.value,created:base.created||now,updated:now,expDate:$('#expDate').value,expTime:$('#expDate').value?$('#expTime').value:''});
   const ok=EP.put(page);
   $('#err').hidden=ok;
   $('#state').textContent=ok?'✓ บันทึกในเครื่องแล้ว':'บันทึกไม่ได้';
@@ -180,7 +205,7 @@ $('#publish').onclick=async()=>{
   save();if(!page)return;
   const btn=$('#publish'),msg=$('#pubMsg'),sent=page.updated;
   btn.disabled=true;btn.textContent='กำลังเผยแพร่…';msg.hidden=true;
-  const r=await EP.publish({id:page.id,md:page.md,updated:sent});
+  const r=await EP.publish({id:page.id,md:page.md,updated:sent,expDate:page.expDate,expTime:page.expTime});
   page=EP.get(id)||page;
   btn.disabled=false;updUi();
   if(r.ok){EP.toast('เผยแพร่แล้ว — ส่งลิงก์ให้คนอื่นได้เลย')}

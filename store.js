@@ -34,18 +34,18 @@ function randId(){
   for(const x of b)s+=ALPHA[x&31];   // 32 ตัวพอดี → ไม่เอนเอียง
   return s;
 }
-/* สถานะจริงบนเซิร์ฟเวอร์ผ่าน view.php?=id&check=1 → 'open' | 'closed' | 'missing' | null (ติดต่อไม่ได้ / ไม่ใช่เซิร์ฟเวอร์ PHP) */
+/* สถานะจริงบนเซิร์ฟเวอร์ผ่าน view.php?=id&check=1 → 'open' | 'closed' | 'expired' | 'missing' | null (ติดต่อไม่ได้ / ไม่ใช่เซิร์ฟเวอร์ PHP) */
 async function remoteState(id){
   try{
     const c=new AbortController(),t=setTimeout(()=>c.abort(),4000);
     const r=await fetch('view.php?='+id+'&check=1',{method:'HEAD',cache:'no-store',signal:c.signal});
     clearTimeout(t);
     const st=r.headers.get('X-Easypage-State');
-    return st==='open'||st==='closed'||st==='missing'?st:null;
+    return st==='open'||st==='closed'||st==='expired'||st==='missing'?st:null;
   }catch(e){return null}
 }
-/* มี id นี้อยู่บนเซิร์ฟเวอร์แล้ว (เปิดอยู่หรือปิดอยู่) → ห้ามสุ่มซ้ำ */
-async function exists(id){const s=await remoteState(id);return s==='open'||s==='closed'}
+/* มี id นี้อยู่บนเซิร์ฟเวอร์แล้ว (เปิดอยู่ / ปิดอยู่ / หมดอายุ) → ห้ามสุ่มซ้ำ */
+async function exists(id){const s=await remoteState(id);return s==='open'||s==='closed'||s==='expired'}
 async function genId(){
   const all=readAll();
   for(let k=0;k<30;k++){
@@ -98,6 +98,7 @@ function markPublished(id,updated){
   const p=get(id);if(!p)return null;
   p.publishedAt=Math.max(p.publishedAt||0,updated);
   p.closed=false;   // เผยแพร่ = เปิดให้อ่านได้
+  p.expired=false;
   put(p);return p;
 }
 function markClosed(id,closed){
@@ -114,13 +115,13 @@ function ensureKey(id){
   if(p){p.key=k;put(p)}
   return k;
 }
-async function api(id,action,body){
+async function api(id,action,body,params){
   const key=ensureKey(id);
   for(let i=0;i<3;i++){
     let pw='';try{pw=sessionStorage.getItem('easypage:pw')||''}catch(e){}
     let j;
     try{
-      const r=await fetch('publish.php?id='+encodeURIComponent(id)+'&action='+action,{method:'POST',
+      const r=await fetch('publish.php?id='+encodeURIComponent(id)+'&action='+action+(params||''),{method:'POST',
         headers:{'X-Easypage':'1','X-Easypage-Key':key,'X-Easypage-Password':encodeURIComponent(pw),'Content-Type':'text/plain;charset=UTF-8'},body:body||''});
       j=await r.json();
     }catch(e){return {ok:false,error:'ติดต่อ publish.php ไม่ได้ — ต้องเปิดผ่านเว็บเซิร์ฟเวอร์ที่มี PHP (ไม่ใช่เปิดไฟล์ตรงๆ)'}}
@@ -134,8 +135,23 @@ async function api(id,action,body){
   }
   return {ok:false,error:'รหัสผ่านไม่ถูกต้อง'};
 }
+/* วันหมดอายุของหน้า (เวลาไทย): expDate 'YYYY-MM-DD' + expTime 'HH:MM' (ว่าง = หมดสิ้นวันนั้น) → {at: epoch ms, hasTime} | null */
+function expiryOf(p){
+  if(!p||!p.expDate||!/^\d{4}-\d{2}-\d{2}$/.test(p.expDate))return null;
+  const t=/^([01]\d|2[0-3]):[0-5]\d$/.test(p.expTime||'')?p.expTime:'';
+  const at=Date.parse(p.expDate+'T'+(t?t+':00':'23:59:59')+'+07:00');
+  return isNaN(at)?null:{at,hasTime:!!t};
+}
+function fmtExpiry(p){
+  const e=expiryOf(p);if(!e)return '';
+  const d=new Date(e.at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Bangkok'});
+  return d+(e.hasTime?' '+p.expTime+' น.':'');
+}
+/* หมดอายุแล้วหรือยัง: ตามเวลาที่ตั้งไว้ในเครื่อง หรือตามที่เซิร์ฟเวอร์รายงานล่าสุด (p.expired) */
+const isExpired=p=>!!(p&&p.publishedAt&&(p.expired||(expiryOf(p)&&Date.now()>expiryOf(p).at)));
+
 async function publish(p){
-  const j=await api(p.id,'publish',p.md);
+  const j=await api(p.id,'publish',p.md,'&exp='+encodeURIComponent(p.expDate||'')+'&exptime='+encodeURIComponent(p.expTime||''));
   if(j.ok)markPublished(p.id,p.updated);
   return j;
 }
@@ -154,11 +170,12 @@ async function syncRemote(){
     const cur=get(p.id);if(!cur)return;
     if(st==='missing'&&cur.publishedAt){cur.publishedAt=0;cur.closed=false;put(cur);changed=true}   // ไฟล์บนเซิร์ฟเวอร์หายไป
     else if(st==='closed'&&!cur.closed){cur.closed=true;put(cur);changed=true}
-    else if(st==='open'&&cur.closed){cur.closed=false;put(cur);changed=true}
+    else if(st==='expired'&&(cur.closed||!cur.expired)){cur.closed=false;cur.expired=true;put(cur);changed=true}
+    else if(st==='open'&&(cur.closed||cur.expired)){cur.closed=false;cur.expired=false;put(cur);changed=true}
   }));
   return changed;
 }
 
 g.EP={ID_RE,list,get,put,remove,fileText,
-  genId,exists,remoteState,syncRemote,setClosed,idFromUrl,shareUrl,download,fmtDate,copyText,toast,isPending,publish,markPublished,markClosed};
+  genId,exists,remoteState,syncRemote,setClosed,idFromUrl,shareUrl,download,fmtDate,copyText,toast,isPending,publish,markPublished,markClosed,expiryOf,fmtExpiry,isExpired};
 })(window);

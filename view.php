@@ -6,6 +6,7 @@
 // สถานะของหน้า:
 //   open    มี p/xxxxx.md และไม่มี p/xxxxx.closed → แสดงบทความ (200)
 //   closed  มี p/xxxxx.closed (ผู้เขียนกด “ปิด” ในหน้าจัดการ) → หน้าแจ้งว่าปิดอยู่ ไม่แสดงบทความ (403)
+//   expired มี p/xxxxx.exp และเลยเวลาแล้ว → หน้าแจ้งว่าหมดอายุ ไม่แสดงบทความ (410)
 //   missing ไม่มีไฟล์ → หน้าแจ้งว่าไม่พบ (404)
 // ?=xxxxx&check=1 → ตอบเฉพาะสถานะ (header X-Easypage-State) ไม่ render — หน้าจัดการ/หน้าเขียนใช้ตรวจ
 // ========================================
@@ -22,10 +23,18 @@ if (preg_match('/^(?:id)?=([A-Za-z0-9]{5})(?:&|$)/', isset($_SERVER['QUERY_STRIN
 $file   = $id ? __DIR__ . '/p/' . $id . '.md' : null;
 $marker = $id ? __DIR__ . '/p/' . $id . '.closed' : null;
 
+// วันหมดอายุ (เวลาไทย) — p/xxxxx.exp = {"at":epoch,"time":true|false}
+$exp = null;
+if ($id && is_file(__DIR__ . '/p/' . $id . '.exp')) {
+    $e = json_decode((string)@file_get_contents(__DIR__ . '/p/' . $id . '.exp'), true);
+    if (is_array($e) && isset($e['at']) && $e['at'] > 0) $exp = $e;
+}
+
 if (!$id)                     { $state = 'invalid'; $code = 400; }
 elseif (is_file($marker))     { $state = 'closed';  $code = 403; }
-elseif (is_file($file))       { $state = 'open';    $code = 200; }
-else                          { $state = 'missing'; $code = 404; }
+elseif (!is_file($file))      { $state = 'missing'; $code = 404; }
+elseif ($exp && time() > $exp['at']) { $state = 'expired'; $code = 410; }
+else                          { $state = 'open';    $code = 200; }
 
 if (isset($_GET['check'])) {
     header('X-Easypage-State: ' . $state);
@@ -45,6 +54,18 @@ if ($state === 'closed') {
     echo ep_notice('🔒', 'บทความนี้ปิดการเผยแพร่อยู่',
         'ผู้เขียนปิดบทความนี้ไว้ ขณะนี้จึงยังไม่สามารถอ่านได้',
         'หากต้องการอ่าน กรุณาติดต่อผู้ที่ส่งลิงก์นี้ให้คุณ หรือลองกลับมาใหม่ภายหลัง', $id);
+    exit;
+}
+if ($state === 'expired') {
+    $mon = array('', 'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.');
+    $dt   = new DateTime('@' . $exp['at']);
+    $dt->setTimezone(new DateTimeZone('Asia/Bangkok'));
+    $when = (int)$dt->format('j') . ' ' . $mon[(int)$dt->format('n')] . ' ' . ((int)$dt->format('Y') + 543)
+          . (!empty($exp['time']) ? ' เวลา ' . $dt->format('H:i') . ' น.' : '');
+    http_response_code(410);
+    echo ep_notice('⏳', 'ลิงก์นี้หมดอายุแล้ว',
+        'บทความนี้หมดอายุเมื่อ ' . $when . ' จึงไม่สามารถอ่านได้อีก',
+        'หากต้องการอ่านต่อ กรุณาติดต่อผู้ที่ส่งลิงก์นี้ให้คุณ เพื่อขอลิงก์ใหม่หรือขอขยายเวลา', $id);
     exit;
 }
 if ($state === 'missing') {
