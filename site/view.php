@@ -42,6 +42,26 @@ if (isset($_GET['check'])) {
     exit;
 }
 
+// ?=xxxxx&raw=1 → ส่ง markdown ดิบ (เฉพาะหน้าที่เปิดอยู่ — ปิด/หมดอายุ/ไม่พบ ตอบสถานะเฉยๆ ไม่ให้เนื้อหา)
+// ใช้ให้หน้าจัดการ/หน้าเขียน “ดึงหน้าที่เผยแพร่แล้วกลับเข้ารายการ” ได้ เมื่อเปลี่ยนเบราว์เซอร์/โดเมน (เนื้อหาเดียวกับที่ผู้อ่านเห็นอยู่แล้ว)
+if (isset($_GET['raw'])) {
+    header('X-Easypage-State: ' . $state);
+    if ($state !== 'open') {
+        http_response_code($code);
+        exit;
+    }
+    if ($exp) {
+        $d = new DateTime('@' . $exp['at']);
+        $d->setTimezone(new DateTimeZone('Asia/Bangkok'));
+        header('X-Easypage-ExpDate: ' . $d->format('Y-m-d'));
+        header('X-Easypage-ExpTime: ' . (!empty($exp['time']) ? $d->format('H:i') : ''));
+    }
+    header('Content-Type: text/plain; charset=UTF-8');
+    header('X-Content-Type-Options: nosniff');
+    readfile($file);
+    exit;
+}
+
 if ($state === 'invalid') {
     http_response_code(400);
     echo ep_notice('⚠️', 'ลิงก์ไม่ถูกต้อง',

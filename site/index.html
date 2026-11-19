@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>จัดการ — Easypage</title>
-<link rel="stylesheet" href="base.css?v=4">
+<link rel="stylesheet" href="base.css?v=8">
 <style>
 :root{--maxw:1100px}
 #q{flex:1 1 240px}
@@ -49,12 +49,12 @@ td.acts .btn,td.acts button{margin:0 2px 2px 0}
 <header>
   <div class="hrow">
     <h1>✎ Easypage</h1>
-    <input id="q" class="grow" type="search" placeholder="ค้นหาชื่อเรื่อง / รหัส / เนื้อหา" autocomplete="off">
+    <input id="q" class="grow" type="search" placeholder="ค้นหาชื่อเรื่อง / รหัส" autocomplete="off">
     <a class="btn primary" href="edit.html">+ เขียนใหม่</a>
   </div>
 </header>
 <main>
-  <div id="err" class="msg err" hidden>เบราว์เซอร์นี้ไม่ยอมให้เก็บข้อมูลในเครื่อง (โหมดส่วนตัว?) — ข้อความที่เขียนจะไม่ถูกบันทึก</div>
+  <div id="err" class="msg err" hidden></div>
   <div id="note" class="msg ok" hidden></div>
 
   <section class="card">
@@ -75,8 +75,8 @@ td.acts .btn,td.acts button{margin:0 2px 2px 0}
   </div>
 </main>
 
-<script src="md.js?v=4"></script>
-<script src="store.js?v=4"></script>
+<script src="md.js?v=8"></script>
+<script src="store.js?v=8"></script>
 <script>
 (function(){
 'use strict';
@@ -84,70 +84,99 @@ const $=s=>document.querySelector(s);
 /* เปิดด้วย index.html?=xxxxx → พาไปหน้าอ่าน */
 if(EP.idFromUrl()){location.replace('view.php'+location.search);return}
 
-function snippet(md){
-  const t=md.replace(/```[\s\S]*?```/g,' ').replace(/!?\[([^\]]*)\]\([^)]*\)/g,'$1').replace(/[#>*_~`|\-]+/g,' ').replace(/\s+/g,' ').trim();
-  return t.length>110?t.slice(0,110)+'…':t;
-}
+let items=null;   // รายการจากเซิร์ฟเวอร์ (api.php?a=list) — เหมือนกันทุกเครื่อง
 function say(t,ok){const m=$('#note');m.hidden=false;m.className='msg '+(ok?'ok':'err');m.textContent=t}
+
+const STATUS={
+  draft:['N','ฉบับร่าง — ยังไม่เผยแพร่'],
+  modified:['N','แก้ไขหลังเผยแพร่'],
+  published:['Y','เผยแพร่แล้ว'],
+  closed:['C','ปิดอยู่'],
+  expired:['E','หมดอายุแล้ว']
+};
+const statusOf=p=>p.state==='published'&&p.pending?'modified':p.state;
+
 function draw(){
-  const all=EP.list(),qs=$('#q').value.trim().toLowerCase();
-  const isClosed=p=>!!(p.closed&&p.publishedAt)||EP.isExpired(p);
-  const closedN=all.filter(isClosed).length,pend=all.filter(p=>!isClosed(p)&&EP.isPending(p)).length;
-  $('#sAll').textContent=all.length;$('#sPend').textContent=pend;$('#sClosed').textContent=closedN;$('#sDone').textContent=all.length-pend-closedN;
-  const rows=all.filter(p=>!qs||p.id.includes(qs)||p.title.toLowerCase().includes(qs)||p.md.toLowerCase().includes(qs));
+  const all=items||[],qs=$('#q').value.trim().toLowerCase();
+  const cnt={pend:0,done:0,off:0};
+  for(const p of all){
+    const s=statusOf(p);
+    if(s==='draft'||s==='modified')cnt.pend++;else if(s==='published')cnt.done++;else cnt.off++;
+  }
+  $('#sAll').textContent=all.length;$('#sPend').textContent=cnt.pend;$('#sDone').textContent=cnt.done;$('#sClosed').textContent=cnt.off;
+  const rows=all.filter(p=>!qs||p.id.includes(qs)||(p.title||'').toLowerCase().includes(qs)||(p.snippet||'').toLowerCase().includes(qs));
   const tb=$('#rows');tb.textContent='';
   const em=$('#empty');
   em.hidden=!!rows.length;
-  em.textContent=all.length?'ไม่พบรายการที่ค้นหา':'ยังไม่มีหน้าที่เขียนไว้ — กด “+ เขียนใหม่” เพื่อเริ่ม หรือเปิดหน้าเขียนแล้วอัปโหลดไฟล์ .md';
+  em.textContent=items===null?'กำลังโหลดรายการจากเซิร์ฟเวอร์…':all.length?'ไม่พบรายการที่ค้นหา':'ยังไม่มีหน้า — กด “+ เขียนใหม่” เพื่อเริ่ม';
   for(const p of rows){
     const tr=document.createElement('tr');
-    const closed=!!(p.closed&&p.publishedAt),expired=!closed&&EP.isExpired(p),pending=EP.isPending(p),title=p.title||MD.titleOf(p.md);
+    const s=statusOf(p),title=p.title||'(ไม่มีชื่อเรื่อง)';
     const td=(cls,label)=>{const c=document.createElement('td');if(cls)c.className=cls;c.dataset.label=label;tr.appendChild(c);return c};
     const a=document.createElement('a');a.href='#';a.textContent='?='+p.id;a.title='คัดลอกลิงก์แชร์';
     a.onclick=async e=>{e.preventDefault();EP.toast(await EP.copyText(EP.shareUrl(p.id))?'คัดลอกลิงก์แล้ว':'คัดลอกไม่ได้')};
     td('code','รหัส').appendChild(a);
     const n=td('name','ชื่อเรื่อง'),box=document.createElement('div');
     const na=document.createElement('a');na.href='edit.html?='+p.id;na.textContent=title;
-    const sm=document.createElement('small');sm.textContent=snippet(p.md);
-    box.append(na);if(sm.textContent)box.append(sm);n.appendChild(box);
+    box.append(na);
+    if(p.snippet){const sm=document.createElement('small');sm.textContent=p.snippet;box.append(sm)}
+    n.appendChild(box);
     td('date','แก้ไข').textContent=EP.fmtDate(p.updated);
-    const st=document.createElement('span');st.className='cs '+(closed?'C':expired?'E':pending?'N':'Y');st.textContent=closed?'ปิดอยู่':expired?'หมดอายุแล้ว':pending?(p.publishedAt?'แก้ไขหลังเผยแพร่':'ยังไม่เผยแพร่'):'เผยแพร่แล้ว';
+    const st=document.createElement('span');st.className='cs '+STATUS[s][0];st.textContent=STATUS[s][1];
     const stc=td('','สถานะ');stc.appendChild(st);
-    if(p.publishedAt&&EP.expiryOf(p)){const sm2=document.createElement('small');sm2.className='muted';sm2.style.display='block';sm2.textContent=(expired?'หมดอายุเมื่อ ':'จะหมดอายุ ')+EP.fmtExpiry(p);stc.appendChild(sm2)}
+    if(p.expDate&&p.state!=='draft'){
+      const sm2=document.createElement('small');sm2.className='muted';sm2.style.display='block';
+      sm2.textContent=(p.state==='expired'?'หมดอายุเมื่อ ':'จะหมดอายุ ')+EP.fmtExpiry(p);stc.appendChild(sm2);
+    }
     const ac=td('acts','จัดการ');
     const mk=(t,cls,fn,href)=>{
       const e=document.createElement(href?'a':'button');e.className=(cls||'')+' sm'+(href?' btn':'');e.textContent=t;
-      if(href){e.href=href;e.target='_blank';e.rel='noopener'}else e.onclick=fn;
+      if(href){e.href=href;if(href.indexOf('edit.html')!==0){e.target='_blank';e.rel='noopener'}}else e.onclick=fn;
       ac.appendChild(e);
     };
     mk('แก้ไข','',null,'edit.html?='+p.id);
-    mk('ดู','',null,'view.php?='+p.id);
-    if(p.publishedAt){
-      if(closed)mk('เปิดอีกครั้ง','',async()=>{
-        const r=await EP.setClosed(p.id,false);draw();
+    if(p.state!=='draft')mk('ดู','',null,'view.php?='+p.id);
+    if(p.state!=='draft'){
+      if(p.state==='closed')mk('เปิดอีกครั้ง','',async()=>{
+        const r=await EP.setClosed(p.id,false);await reload();
         say(r.ok?'เปิด “'+title+'” แล้ว — ผู้อ่านเปิดลิงก์ได้อีกครั้ง':'เปิดไม่สำเร็จ: '+r.error,r.ok);
       });
       else mk('ปิด','danger',async()=>{
         if(!confirm('ปิด “'+title+'” (?='+p.id+') ?\n\n• ผู้ที่เปิดลิงก์จะเห็นหน้าแจ้งว่าบทความนี้ปิดอยู่ ไม่เห็นเนื้อหา\n• เนื้อหายังอยู่ครบ กด “เปิดอีกครั้ง” เมื่อไหร่ก็ได้'))return;
-        const r=await EP.setClosed(p.id,true);draw();
+        const r=await EP.setClosed(p.id,true);await reload();
         say(r.ok?'ปิด “'+title+'” แล้ว — ผู้ที่เปิดลิงก์จะเห็นหน้าแจ้งว่าปิดอยู่':'ปิดไม่สำเร็จ: '+r.error,r.ok);
       });
     }
-    mk('ไฟล์ .md','',()=>EP.download(EP.fileName(p),EP.fileText(p),'text/markdown;charset=utf-8'));
-    mk('ลบ','danger',()=>{
-      if(!confirm('ลบ “'+title+'” (?='+p.id+') ออกจากเครื่องนี้?\n\n• ลบแล้วกู้คืนไม่ได้ (ควรสำรองไว้ก่อน)\n• ไฟล์ที่เผยแพร่บนเว็บแล้ว (p/'+p.id+'.md) จะไม่ถูกลบ'+(p.publishedAt?' และเครื่องนี้จะแก้/ปิดหน้านั้นไม่ได้อีก (กุญแจเจ้าของหน้าอยู่กับข้อมูลที่ลบ)':' — ต้องลบเองที่เซิร์ฟเวอร์')))return;
-      EP.remove(p.id);draw();EP.toast('ลบแล้ว');
+    mk('ไฟล์ .md','',async()=>{
+      const r=await EP.get(p.id);
+      if(!r.ok){say('ดาวน์โหลดไม่สำเร็จ: '+r.error,false);return}
+      EP.download(EP.fileName({id:p.id,md:r.md}),r.md,'text/markdown;charset=utf-8');
+    });
+    mk('ลบ','danger',async()=>{
+      if(!confirm('ลบ “'+title+'” (?='+p.id+') ?\n\n• ลิงก์ของหน้านี้จะเปิดไม่ได้ทันที (ฉบับที่เผยแพร่ถูกถอนด้วย)\n• ไฟล์ถูกย้ายไปเก็บในโฟลเดอร์ trash/ บนเซิร์ฟเวอร์ (ผู้ดูแลกู้คืนได้) ไม่ได้ลบทิ้งถาวร\n• ใครก็ตามที่เปิดหน้านี้อยู่จะบันทึกไม่ได้'))return;
+      const r=await EP.remove(p.id);await reload();
+      say(r.ok?'ลบ “'+title+'” แล้ว':'ลบไม่สำเร็จ: '+r.error,r.ok);
     });
     tb.appendChild(tr);
   }
 }
 
+async function reload(){
+  const r=await EP.list();
+  if(r.ok){items=r.items;$('#err').hidden=true}
+  else{items=items||[];const e=$('#err');e.textContent=r.error||'โหลดรายการไม่สำเร็จ';e.hidden=false}
+  draw();
+}
+
 $('#q').addEventListener('input',draw);
-addEventListener('storage',draw);
-addEventListener('pageshow',draw);
-try{localStorage.setItem('easypage:t','1');localStorage.removeItem('easypage:t')}catch(e){$('#err').hidden=false}
+addEventListener('pageshow',e=>{if(e.persisted)reload()});
 draw();
-EP.syncRemote().then(ch=>{if(ch)draw()});   // ตรวจสถานะจริงบนเซิร์ฟเวอร์ (ปิด/เปิด/ไฟล์หาย) ให้ตรงกัน
+(async()=>{
+  // หน้าที่เคยเขียนเก็บไว้ในเบราว์เซอร์ (รุ่นเก่า) → ย้ายขึ้นเซิร์ฟเวอร์ครั้งเดียว (ไม่ทับของที่มีบนเซิร์ฟเวอร์)
+  const m=await EP.migrateLocal();
+  await reload();
+  if(m.moved)say('ย้ายหน้าที่เขียนไว้ในเครื่องนี้ขึ้นเซิร์ฟเวอร์แล้ว '+m.moved+' หน้า — จากนี้เปิดจากเครื่องไหนก็เห็นเหมือนกัน',true);
+})();
 })();
 </script>
 </body>

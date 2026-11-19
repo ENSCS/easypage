@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>เขียน — Easypage</title>
-<link rel="stylesheet" href="base.css?v=4">
+<link rel="stylesheet" href="base.css?v=8">
 <style>
 :root{--maxw:1500px}
 #state{font-size:13px;color:var(--muted);white-space:nowrap}
@@ -47,20 +47,21 @@
   </div>
 </header>
 <main>
-  <div id="err" class="msg err" hidden>บันทึกลงเครื่องไม่ได้ (เบราว์เซอร์อาจปิดการเก็บข้อมูล / โหมดส่วนตัว) — ให้กด “ดาวน์โหลดไฟล์” เก็บไว้ก่อน</div>
+  <div id="err" class="msg err" hidden></div>
+  <div id="conflict" class="msg warn" hidden>มีการแก้หน้านี้จากที่อื่นไปแล้ว (เครื่องอื่นหรือแท็บอื่น) — <button id="cfReload" class="sm" type="button">โหลดฉบับล่าสุด (ข้อความที่พิมพ์ค้างจะหาย)</button> <button id="cfForce" class="sm" type="button">บันทึกทับด้วยข้อความของฉัน</button></div>
 
   <section class="card share">
     <div class="row">
       <h2 style="margin:0">ลิงก์สำหรับแชร์</h2>
       <span class="id muted" id="idtxt"></span>
-      <span id="cs" class="cs N" hidden>ยังไม่ส่งออก</span>
+      <span id="cs" class="cs N" hidden></span>
     </div>
     <div class="row">
       <input id="link" type="text" readonly aria-label="ลิงก์สำหรับแชร์">
       <button id="copy">คัดลอกลิงก์</button>
       <button id="dl" title="ดาวน์โหลดเป็นไฟล์ .md ตั้งชื่อตามชื่อเรื่อง (ถ้าจะวางเองในโฟลเดอร์ p/ ต้องเปลี่ยนชื่อเป็น รหัส.md)">ดาวน์โหลดไฟล์ (.md)</button>
       <button id="open" title="เปิดหน้าอ่านจากฉบับร่างในแท็บใหม่ เพื่อทดสอบก่อนเผยแพร่">ดูตัวอย่าง ↗</button>
-      <button id="publish" class="primary" title="เขียนไฟล์ p/รหัส.md บนเซิร์ฟเวอร์ให้เลย ผู้อ่านเปิดลิงก์ได้ทันที">เผยแพร่</button>
+      <button id="publish" class="primary" title="เผยแพร่ฉบับร่างนี้ — ผู้อ่านเปิดลิงก์ได้ทันที">เผยแพร่</button>
       <a id="pub" class="btn" target="_blank" rel="noopener" href="#" hidden>ดูหน้าที่เผยแพร่ ↗</a>
     </div>
     <div class="row exp">
@@ -71,7 +72,7 @@
       <span class="muted small" id="expHint"></span>
     </div>
     <div id="pubMsg" class="msg err" hidden></div>
-    <div class="muted small">ข้อความบันทึกอัตโนมัติในเครื่องนี้ · <b>เผยแพร่</b> = เขียนไฟล์ <code>p/<span id="fname"></span></code> บนเซิร์ฟเวอร์ให้เลย แล้วส่งลิงก์ให้คนอื่นเปิดดูได้ · <b>ดูตัวอย่าง</b> = ทดสอบหน้าอ่านจากฉบับร่างก่อนเผยแพร่ · <b>วันหมดอายุ</b> = เลยเวลานั้นผู้อ่านจะเห็นหน้าแจ้งว่าหมดอายุ (ไม่ตั้ง = ไม่หมดอายุ; ตั้งแล้วกด “เผยแพร่” อีกครั้งเพื่ออัปเดต) · ชื่อเรื่อง = บรรทัดแรกของเนื้อหา</div>
+    <div class="muted small">ข้อความบันทึกขึ้นเซิร์ฟเวอร์อัตโนมัติ (เปิดจากเครื่องไหนก็เห็นเหมือนกัน) ผู้อ่านเห็นเฉพาะฉบับที่ <b>เผยแพร่</b> · <b>เผยแพร่</b> = ส่งฉบับร่างขึ้นให้ผู้อ่าน (แก้ต่อแล้วกดอีกครั้งเพื่ออัปเดต) · <b>ดูตัวอย่าง</b> = ทดสอบหน้าอ่านจากฉบับร่างก่อนเผยแพร่ · <b>วันหมดอายุ</b> = เลยเวลานั้นผู้อ่านจะเห็นหน้าแจ้งว่าหมดอายุ (ไม่ตั้ง = ไม่หมดอายุ) · ชื่อเรื่อง = บรรทัดแรกของเนื้อหา</div>
   </section>
 
   <div class="tabs" role="tablist">
@@ -91,27 +92,47 @@
   </div>
 </main>
 
-<script src="md.js?v=4"></script>
-<script src="store.js?v=4"></script>
+<script src="md.js?v=8"></script>
+<script src="store.js?v=8"></script>
 <script>
 (async function(){
 'use strict';
 const $=s=>document.querySelector(s);
 const ta=$('#md'),pv=$('#pv');
-let id=EP.idFromUrl(),page=id?EP.get(id):null,dirty=false,saveT,pvT,pvSeq=0,pvY=0;
-
-if(!id){
-  id=await EP.genId();
-  history.replaceState(null,'','edit.html?='+id);
-}
-ta.value=page?page.md:'';
-$('#expDate').value=page&&page.expDate||'';
-$('#expTime').value=page&&page.expTime||'';
+let id=EP.idFromUrl(),isNew=false;
+let info=null;            // ข้อมูลล่าสุดจากเซิร์ฟเวอร์ {state,pending,updated,publishedAt,expDate,expTime,…}
+let base=0;               // เวอร์ชันที่โหลด/บันทึกล่าสุด (ใช้ตรวจว่าที่อื่นแก้ไปก่อนหรือไม่)
+let dirty=false,saving=false,saveT,pvT,pvSeq=0,pvY=0,loaded=false;
 $('#expDate').min=new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Bangkok'});
-$('#idtxt').textContent='?='+id;
-$('#fname').textContent=id+'.md';
-$('#link').value=EP.shareUrl(id);
-$('#pub').href='view.php?='+id;
+
+function setErr(t){const m=$('#err');m.textContent=t||'';m.hidden=!t}
+
+/* ---------- โหลดจากเซิร์ฟเวอร์ ---------- */
+async function load(){
+  if(!id){id=EP.randId();isNew=true;history.replaceState(null,'','edit.html?='+id)}
+  else{
+    const r=await EP.get(id);
+    if(r.ok){
+      ta.value=r.md;info=r.info;base=info.updated;
+      $('#expDate').value=info.expDate||'';$('#expTime').value=info.expTime||'';
+      $('#state').textContent='โหลดจากเซิร์ฟเวอร์แล้ว';
+    }else if(r.status===404){isNew=true}      // รหัสนี้ยังไม่มี → เริ่มหน้าใหม่ด้วยรหัสนี้
+    else{setErr(r.error||'โหลดไม่สำเร็จ');}
+  }
+  // ที่พักกันข้อความหาย: ข้อความที่พิมพ์ค้าง ยังไม่ทันขึ้นเซิร์ฟเวอร์ (เช่น เน็ตหลุด/ปิดแท็บ)
+  const buf=EP.bufGet(id);
+  if(buf&&typeof buf.md==='string'&&buf.md!==ta.value&&buf.md.trim()&&confirm('พบข้อความที่พิมพ์ค้างไว้ในเครื่องนี้ ยังไม่ได้บันทึกขึ้นเซิร์ฟเวอร์\n\nกู้คืนข้อความนั้นไหม?\n(ตกลง = กู้คืน · ยกเลิก = ใช้ฉบับบนเซิร์ฟเวอร์)')){
+    ta.value=buf.md;
+    if(typeof buf.expDate==='string'){$('#expDate').value=buf.expDate;$('#expTime').value=buf.expTime||''}
+    dirty=true;
+  }else if(buf)EP.bufClear(id);
+  loaded=true;
+  $('#idtxt').textContent='?='+id;
+  $('#link').value=EP.shareUrl(id);
+  $('#pub').href='view.php?='+id;
+  renderPv();updUi();
+  if(dirty){changed()}
+}
 
 /* ---------- ตัวอย่าง: ส่งไป preview.php (Parsedown เดียวกับหน้าอ่าน) ถ้าไม่ได้ใช้ตัวแปลงในเบราว์เซอร์แทน ---------- */
 pv.addEventListener('load',()=>{try{pv.contentWindow.scrollTo(0,pvY)}catch(e){}});
@@ -143,19 +164,28 @@ async function renderPv(){
   try{pvY=pv.contentWindow.scrollY||0}catch(e){}
   pv.srcdoc=doc;
 }
+
+/* ---------- สถานะบนหน้าจอ ---------- */
 function updUi(){
   const has=!!ta.value.trim();
   $('#copy').disabled=$('#dl').disabled=!has;
-  $('#publish').disabled=!has;
+  $('#publish').disabled=!has||saving;
   $('#open').disabled=!has;
   const cs=$('#cs');
-  const pend=!page||EP.isPending(page);
-  const closed=!!(page&&page.closed&&page.publishedAt),expired=!closed&&EP.isExpired(page);
-  if(page){cs.hidden=false;cs.className='cs '+(closed?'C':expired?'E':pend?'N':'Y');cs.textContent=closed?'ปิดอยู่ (กด “เผยแพร่” เพื่อเปิดอีกครั้ง)':expired?'หมดอายุแล้ว (ตั้งวันใหม่ แล้วกด “เผยแพร่”)':pend?(page.publishedAt?'แก้ไขหลังเผยแพร่':'ยังไม่เผยแพร่'):'เผยแพร่แล้ว'}
-  else cs.hidden=true;
-  $('#publish').textContent=page&&!pend&&!closed&&!expired?'เผยแพร่แล้ว ✓':'เผยแพร่';
+  const st=info&&info.state;                        // draft | published | closed | expired
+  const pend=!info||info.pending||dirty;
+  if(!info){cs.hidden=true}
+  else{
+    cs.hidden=false;
+    cs.className='cs '+(st==='closed'?'C':st==='expired'?'E':pend?'N':'Y');
+    cs.textContent=st==='closed'?'ปิดอยู่ (กด “เผยแพร่” เพื่อเปิดอีกครั้ง)'
+      :st==='expired'?'หมดอายุแล้ว (ตั้งวันใหม่ แล้วกด “เผยแพร่”)'
+      :st==='draft'?'ฉบับร่าง — ยังไม่เผยแพร่'
+      :pend?'แก้ไขหลังเผยแพร่':'เผยแพร่แล้ว';
+  }
+  $('#publish').textContent=info&&st==='published'&&!pend?'เผยแพร่แล้ว ✓':'เผยแพร่';
   updExp();
-  $('#pub').hidden=!(page&&page.publishedAt);
+  $('#pub').hidden=!(info&&info.state!=='draft');
 }
 
 /* ---------- วันหมดอายุ ---------- */
@@ -170,51 +200,78 @@ $('#expDate').addEventListener('change',()=>{updExp();changed()});
 $('#expTime').addEventListener('change',()=>{updExp();changed()});
 $('#expClr').onclick=()=>{$('#expDate').value='';$('#expTime').value='';updExp();changed()};
 
-/* ---------- บันทึก ---------- */
-function save(){
+/* ---------- บันทึกขึ้นเซิร์ฟเวอร์ (ฉบับร่าง) ---------- */
+function snapshot(){return {md:ta.value,expDate:$('#expDate').value,expTime:$('#expDate').value?$('#expTime').value:''}}
+let forceNext=false;
+async function save(){
   clearTimeout(saveT);
-  if(!dirty)return;
-  dirty=false;
-  if(!page&&!ta.value.trim())return;
-  const now=Date.now();
-  // ใช้ record ล่าสุดในเครื่องเป็นฐาน (มี key / publishedAt / closed ที่อาจเพิ่งเปลี่ยนจากแท็บอื่นหรือจากการเผยแพร่) แล้วทับด้วยข้อความใหม่
-  const base=EP.get(id)||page||{};
-  page=Object.assign({},base,{id,title:'',md:ta.value,created:base.created||now,updated:now,expDate:$('#expDate').value,expTime:$('#expDate').value?$('#expTime').value:''});
-  const ok=EP.put(page);
-  $('#err').hidden=ok;
-  $('#state').textContent=ok?'✓ บันทึกในเครื่องแล้ว':'บันทึกไม่ได้';
-  updUi();
+  if(!loaded||!dirty||saving)return true;
+  const s=snapshot();
+  if(isNew&&!s.md.trim()){dirty=false;EP.bufClear(id);return true}   // หน้าใหม่ที่ยังว่าง ไม่ต้องสร้าง
+  saving=true;$('#state').textContent='กำลังบันทึก…';updUi();
+  const r=await EP.save(id,s.md,{isNew,base:forceNext?'':base,expDate:s.expDate,expTime:s.expTime});
+  saving=false;
+  if(r.ok){
+    forceNext=false;
+    info=r.info;base=info.updated;isNew=false;
+    $('#conflict').hidden=true;setErr('');
+    const cur=snapshot();
+    if(cur.md===s.md&&cur.expDate===s.expDate&&cur.expTime===s.expTime){dirty=false;EP.bufClear(id);$('#state').textContent='✓ บันทึกขึ้นเซิร์ฟเวอร์แล้ว'}
+    else{saveT=setTimeout(save,300)}   // มีการพิมพ์เพิ่มระหว่างบันทึก
+    updUi();return true;
+  }
+  if(r.exists&&isNew){        // รหัสสุ่มซ้ำกับของที่มีอยู่ → สุ่มรหัสใหม่แล้วลองอีกครั้ง
+    id=EP.randId();history.replaceState(null,'','edit.html?='+id);
+    $('#idtxt').textContent='?='+id;$('#link').value=EP.shareUrl(id);$('#pub').href='view.php?='+id;
+    saveT=setTimeout(save,50);return false;
+  }
+  if(r.conflict){$('#conflict').hidden=false;$('#state').textContent='บันทึกไม่ได้ — มีการแก้จากที่อื่น';updUi();return false}
+  if(r.status===404&&!isNew){setErr('หน้านี้ถูกลบจากเซิร์ฟเวอร์ไปแล้ว — ข้อความยังอยู่ในช่องเขียน กด “ดาวน์โหลดไฟล์” เก็บไว้ได้');$('#state').textContent='บันทึกไม่ได้';return false}
+  setErr((r.error||'บันทึกไม่สำเร็จ')+' — ข้อความยังอยู่ในเครื่องนี้ จะลองใหม่เมื่อมีการแก้ไขหรือกด Ctrl/Cmd+S');
+  $('#state').textContent='บันทึกไม่ได้';updUi();
+  clearTimeout(saveT);saveT=setTimeout(save,10000);   // ลองใหม่เอง
+  return false;
 }
 function changed(){
+  if(!loaded)return;
   dirty=true;$('#state').textContent='กำลังแก้ไข…';
-  clearTimeout(saveT);saveT=setTimeout(save,600);
+  EP.bufSet(id,Object.assign({at:Date.now()},snapshot()));   // กันข้อความหายถ้าเน็ตหลุด/ปิดแท็บ
+  clearTimeout(saveT);saveT=setTimeout(save,1200);
   clearTimeout(pvT);pvT=setTimeout(renderPv,400);
   updUi();
 }
 ta.addEventListener('input',changed);
-addEventListener('pagehide',save);
-document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+addEventListener('pagehide',()=>{if(dirty)save()});   // ถ้าส่งไม่ทัน ที่พักข้อความในเครื่องจะกู้คืนให้ครั้งหน้า
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty)save()});
+addEventListener('beforeunload',e=>{if(dirty&&snapshot().md.trim()){e.preventDefault();e.returnValue=''}});
 addEventListener('keydown',e=>{
-  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();EP.toast('บันทึกแล้ว')}
+  if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save().then(ok=>{if(ok)EP.toast('บันทึกแล้ว')})}
 });
+$('#cfReload').onclick=async()=>{
+  const r=await EP.get(id);
+  if(!r.ok){setErr(r.error);return}
+  ta.value=r.md;info=r.info;base=info.updated;dirty=false;EP.bufClear(id);
+  $('#expDate').value=info.expDate||'';$('#expTime').value=info.expTime||'';
+  $('#conflict').hidden=true;$('#state').textContent='โหลดฉบับล่าสุดแล้ว';
+  updExp();renderPv();updUi();
+};
+$('#cfForce').onclick=()=>{forceNext=true;$('#conflict').hidden=true;dirty=true;save()};
 
-/* ---------- แชร์ ---------- */
-$('#copy').onclick=async()=>{save();EP.toast(await EP.copyText($('#link').value)?'คัดลอกลิงก์แล้ว':'คัดลอกไม่ได้ — เลือกลิงก์แล้วกด Ctrl/Cmd+C เอง')};
+/* ---------- แชร์ / เผยแพร่ ---------- */
+$('#copy').onclick=async()=>{await save();EP.toast(await EP.copyText($('#link').value)?'คัดลอกลิงก์แล้ว':'คัดลอกไม่ได้ — เลือกลิงก์แล้วกด Ctrl/Cmd+C เอง')};
 $('#link').onfocus=e=>e.target.select();
 $('#publish').onclick=async()=>{
-  save();if(!page)return;
-  const btn=$('#publish'),msg=$('#pubMsg'),sent=page.updated;
-  btn.disabled=true;btn.textContent='กำลังเผยแพร่…';msg.hidden=true;
-  const r=await EP.publish({id:page.id,md:page.md,updated:sent,expDate:page.expDate,expTime:page.expTime});
-  page=EP.get(id)||page;
-  btn.disabled=false;updUi();
-  if(r.ok){EP.toast('เผยแพร่แล้ว — ส่งลิงก์ให้คนอื่นได้เลย')}
+  const btn=$('#publish'),msg=$('#pubMsg');
+  msg.hidden=true;btn.disabled=true;btn.textContent='กำลังเผยแพร่…';
+  if(dirty&&!(await save())){btn.disabled=false;updUi();msg.textContent='บันทึกฉบับร่างไม่สำเร็จ จึงยังไม่เผยแพร่';msg.hidden=false;return}
+  const r=await EP.publish(id);
+  btn.disabled=false;
+  if(r.ok){info=r.info;base=info.updated;EP.toast('เผยแพร่แล้ว — ส่งลิงก์ให้คนอื่นได้เลย')}
   else{msg.textContent=r.error||'เผยแพร่ไม่สำเร็จ';msg.hidden=false}
+  updUi();
 };
-$('#pub').onclick=()=>save();
-/* ดูตัวอย่าง = เปิดหน้าอ่านจากฉบับร่างในแท็บใหม่ (ไม่ต้องเผยแพร่ ไม่เก็บอะไรไว้ที่เซิร์ฟเวอร์) */
+/* ดูตัวอย่าง = เปิดหน้าอ่านจากฉบับร่างในแท็บใหม่ (ไม่ต้องเผยแพร่ ไม่เก็บอะไรเพิ่มที่เซิร์ฟเวอร์) */
 $('#open').onclick=async()=>{
-  save();
   const w=window.open('about:blank','_blank');   // เปิดทันทีตอนคลิก กัน popup blocker
   if(!w){EP.toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาต popup แล้วลองอีกครั้ง');return}
   let {doc}=await getDoc(ta.value,true);
@@ -223,9 +280,8 @@ $('#open').onclick=async()=>{
   w.location.href=URL.createObjectURL(new Blob([doc],{type:'text/html;charset=utf-8'}));
 };
 $('#dl').onclick=()=>{
-  save();if(!page)return;
-  const fn=EP.fileName(page);
-  EP.download(fn,EP.fileText(page),'text/markdown;charset=utf-8');
+  const fn=EP.fileName({id,md:ta.value});
+  EP.download(fn,ta.value,'text/markdown;charset=utf-8');
   EP.toast('ดาวน์โหลด “'+fn+'” แล้ว');
 };
 
@@ -351,9 +407,7 @@ function tab(t){
 }
 $('#tw').onclick=()=>tab('write');$('#tp').onclick=()=>tab('preview');
 
-renderPv();updUi();
-if(page&&page.publishedAt)EP.syncRemote().then(ch=>{if(ch){page=EP.get(id)||page;updUi()}});   // ตรวจว่าถูกปิด/เปิดจากหน้าจัดการหรือไม่
-if(page)$('#state').textContent='บันทึกล่าสุด '+EP.fmtDate(page.updated);
+load();
 })();
 </script>
 </body>
