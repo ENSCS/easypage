@@ -227,7 +227,12 @@ if ($a === 'list') {
         if ($info['state'] === 'draft' && $info['bytes'] === 0) continue;   // ฉบับร่างว่างเปล่า ไม่ต้องแสดง
         $items[] = $info;
     }
-    usort($items, function ($x, $y) { return $y['updated'] - $x['updated']; });
+    // แก้ไขล่าสุดอยู่บนสุด (เทียบแบบไม่ลบกัน กันเลขล้น/ทศนิยม; เวลาเท่ากันเรียงตามวันสร้าง แล้วรหัส)
+    usort($items, function ($x, $y) {
+        if ($x['updated'] !== $y['updated']) return $x['updated'] < $y['updated'] ? 1 : -1;
+        if ($x['created'] !== $y['created']) return $x['created'] < $y['created'] ? 1 : -1;
+        return strcmp($x['id'], $y['id']);
+    });
     ep_out(200, array('ok' => true, 'items' => array_slice($items, 0, 5000)));
 }
 if ($a === 'get') {

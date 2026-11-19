@@ -73,5 +73,5 @@ trash/<รหัส>-<เวลา>/   หน้าที่ลบ — ย้า
 - `site/config.php`, `site/p/`, `site/d/`, `site/trash/` ไม่เข้า git (ดู `.gitignore`) — เป็นข้อมูล/ค่าตั้งของแต่ละเครื่อง
 
 ## หมายเหตุสำหรับคนแก้โค้ด
-- `site/index.html` / `site/edit.html` เรียก `store.js`, `md.js`, `base.css` ด้วย `?v=N` — **แก้ไฟล์เหล่านี้แล้วให้เพิ่มเลข `v` ในทั้งสองหน้า** (ตอนนี้ `v=9`) กัน HTML รุ่นใหม่ไปคู่กับ JS รุ่นเก่าที่ค้างแคช · `.htaccess` ที่ราก (Apache) ตั้ง `no-cache` ให้ไฟล์ html/js/css อีกชั้นหนึ่ง
+- `site/index.html` / `site/edit.html` เรียก `store.js`, `md.js`, `base.css` ด้วย `?v=N` — **แก้ไฟล์เหล่านี้แล้วให้เพิ่มเลข `v` ในทั้งสองหน้า** (ตอนนี้ `v=10`) กัน HTML รุ่นใหม่ไปคู่กับ JS รุ่นเก่าที่ค้างแคช · `.htaccess` ที่ราก (Apache) ตั้ง `no-cache` ให้ไฟล์ html/js/css อีกชั้นหนึ่ง
 - ต่างจาก mdview เล็กน้อย: regex แปลง URL เปล่าไม่แตะ `src="..."` และเปิด safe mode
