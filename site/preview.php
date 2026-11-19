@@ -25,4 +25,4 @@ if (strlen($md) > 2 * 1024 * 1024) {
 
 list($html, $math, $title) = ep_render($md);
 header('Content-Type: text/html; charset=UTF-8');
-echo ep_page($html !== '' ? $html : '<p class="empty">พิมพ์ข้อความทางซ้าย แล้วตัวอย่างจะแสดงที่นี่</p>', $math, $title, !isset($_GET['full']));
+echo ep_page($html !== '' ? $html : '<p class="empty">พิมพ์ข้อความทางซ้าย แล้วตัวอย่างจะแสดงที่นี่</p>', $math, $title, !isset($_GET['full']), '', ep_theme_id(isset($_GET['theme']) ? $_GET['theme'] : ''));

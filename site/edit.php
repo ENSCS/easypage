@@ -1,4 +1,4 @@
-<?php require __DIR__ . '/pin.php'; ?>
+<?php require __DIR__ . '/pin.php'; require_once __DIR__ . '/themes.php'; ?>
 <!doctype html>
 <html lang="th">
 <head>
@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>เขียน — Easypage</title>
-<link rel="stylesheet" href="base.css?v=16">
+<link rel="stylesheet" href="base.css?v=17">
 <style>
 :root{--maxw:1500px}
 #state{font-size:13px;color:var(--muted);white-space:nowrap}
@@ -29,6 +29,13 @@
 #md{width:100%;min-height:max(420px,calc(100dvh - 300px));resize:vertical;display:block;padding:12px 14px;font:14.5px/1.65 ui-monospace,"SF Mono",Menlo,Consolas,"Sarabun","Noto Sans Thai",monospace;tab-size:4}
 .ph{font-size:13px;color:var(--muted);margin:0 0 8px;display:flex;justify-content:space-between;gap:8px}
 .ph b{font-weight:600}
+.themes{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}
+.themes>span{font-size:13px;color:var(--muted);margin-right:2px}
+.sw{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 6px;font-size:13px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--text);cursor:pointer}
+.sw:hover{border-color:var(--accent)}
+.sw.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset;font-weight:600}
+.sw i{display:inline-flex;width:22px;height:14px;border-radius:7px;overflow:hidden;border:1px solid rgba(128,128,128,.4)}
+.sw i b{flex:1}
 #pvwrap{position:relative;height:max(420px,calc(100dvh - 300px))}
 #pvwrap iframe{position:absolute;inset:0;width:100%;height:100%;border:1px solid var(--line);border-radius:10px;background:var(--panel);display:block}
 #pvB{visibility:hidden}
@@ -102,13 +109,18 @@
     </div>
     <div id="pvbox">
       <p class="ph hide-m"><b>ตัวอย่างที่ผู้อ่านจะเห็น</b><span id="pvnote"></span></p>
+      <div class="themes" id="themes" role="radiogroup" aria-label="ธีมสีของหน้าอ่าน"><span>ธีมสี</span>
+<?php foreach (ep_themes() as $tid => $t): $lab = trim(preg_replace('/\s*\(.*$/u', '', $t[0])); ?>
+        <button type="button" class="sw" role="radio" data-t="<?= $tid ?>" title="<?= htmlspecialchars($t[0]) ?>"><i><b style="background:<?= $t[1] ?>"></b><b style="background:<?= $t[2] ?>"></b></i><?= htmlspecialchars($lab) ?></button>
+<?php endforeach; ?>
+      </div>
       <div id="pvwrap"><iframe id="pvA" title="ตัวอย่าง"></iframe><iframe id="pvB" title="ตัวอย่าง (สำรอง)" aria-hidden="true" tabindex="-1"></iframe></div>
     </div>
   </div>
 </main>
 
-<script src="md.js?v=16"></script>
-<script src="store.js?v=16"></script>
+<script src="md.js?v=17"></script>
+<script src="store.js?v=17"></script>
 <script>
 (async function(){
 'use strict';
@@ -116,6 +128,7 @@ const $=s=>document.querySelector(s);
 const ta=$('#md');
 let pvFront=$('#pvA'),pvBack=$('#pvB'),lastDoc=null;   // ตัวอย่างใช้ iframe 2 ชั้น: โหลดชั้นหลังให้เสร็จก่อนค่อยสลับ — พิมพ์แล้วไม่กะพริบ
 let id=EP.idFromUrl(),isNew=false;
+let theme='default';      // ธีมสีของหน้าอ่าน (default|t1|t2|h2) — เก็บพร้อมฉบับร่าง ผู้อ่านเห็นตามฉบับที่เผยแพร่
 let info=null;            // ข้อมูลล่าสุดจากเซิร์ฟเวอร์ {state,pending,updated,publishedAt,expDate,expTime,…}
 let base=0;               // เวอร์ชันที่โหลด/บันทึกล่าสุด (ใช้ตรวจว่าที่อื่นแก้ไปก่อนหรือไม่)
 let dirty=false,saving=false,saveT,pvT,pvSeq=0,pvY=0,loaded=false;
@@ -131,6 +144,7 @@ async function load(){
     if(r.ok){
       ta.value=r.md;info=r.info;base=info.updated;
       $('#expDate').value=info.expDate||'';$('#expTime').value=info.expTime||'';
+      setTheme(info.theme);
       $('#state').textContent='โหลดจากเซิร์ฟเวอร์แล้ว';
     }else if(r.status===404){isNew=true}      // รหัสนี้ยังไม่มี → เริ่มหน้าใหม่ด้วยรหัสนี้
     else{setErr(r.error||'โหลดไม่สำเร็จ');}
@@ -139,6 +153,7 @@ async function load(){
   const buf=EP.bufGet(id);
   if(buf&&typeof buf.md==='string'&&buf.md!==ta.value&&buf.md.trim()&&confirm('พบข้อความที่พิมพ์ค้างไว้ในเครื่องนี้ ยังไม่ได้บันทึกขึ้นเซิร์ฟเวอร์\n\nกู้คืนข้อความนั้นไหม?\n(ตกลง = กู้คืน · ยกเลิก = ใช้ฉบับบนเซิร์ฟเวอร์)')){
     ta.value=buf.md;
+    if(typeof buf.theme==='string')setTheme(buf.theme);
     if(typeof buf.expDate==='string'){$('#expDate').value=buf.expDate;$('#expTime').value=buf.expTime||''}
     dirty=true;
   }else if(buf)EP.bufClear(id);
@@ -149,29 +164,29 @@ async function load(){
 }
 
 /* ---------- ตัวอย่าง: ส่งไป preview.php (Parsedown เดียวกับหน้าอ่าน) ถ้าไม่ได้ใช้ตัวแปลงในเบราว์เซอร์แทน ---------- */
-function localDoc(md){
+function localDoc(md,th){
   const body=md.trim()?MD.render(md):'<p class="empty">พิมพ์ข้อความทางซ้าย แล้วตัวอย่างจะแสดงที่นี่</p>';
-  return '<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+  return '<!DOCTYPE html><html lang="th" data-ctheme="'+(th||'default')+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
    +'<link rel="stylesheet" href="mdview.css"></head><body><style>.container{padding-top:1.1rem;padding-bottom:2rem}.container>:first-child{margin-top:0}</style><div class="container">'+body+'</div>'
    +'<script>(function(){var t;try{t=localStorage.getItem("theme")}catch(e){}if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t);document.body.style.fontSize="18px";'
    +'document.querySelectorAll(".container a").forEach(function(a){a.target="_blank";a.rel="noopener noreferrer"})})()<\/script></body></html>';
 }
 /* ขอหน้า HTML ของข้อความจาก preview.php (full=true → มีปุ่มธีม/ขนาดตัวอักษร) ถ้าไม่ได้ใช้ตัวแปลงในเบราว์เซอร์แทน */
-async function getDoc(md,full){
+async function getDoc(md,full,th){
   try{
     const c=new AbortController(),t=setTimeout(()=>c.abort(),5000);
-    const r=await fetch('preview.php'+(full?'?full=1':''),{method:'POST',body:md,signal:c.signal,headers:{'Content-Type':'text/plain;charset=UTF-8'}});
+    const r=await fetch('preview.php?theme='+encodeURIComponent(th||'default')+(full?'&full=1':''),{method:'POST',body:md,signal:c.signal,headers:{'Content-Type':'text/plain;charset=UTF-8'}});
     clearTimeout(t);
     if(!r.ok)throw new Error(r.status);
     const doc=await r.text();
     if(!/<div class="container">/.test(doc))throw new Error('not php');   // เซิร์ฟเวอร์ส่งโค้ด PHP กลับมาเฉยๆ
     return {doc,offline:false};
-  }catch(e){return {doc:localDoc(md),offline:true}}
+  }catch(e){return {doc:localDoc(md,th),offline:true}}
 }
 async function renderPv(){
   const my=++pvSeq,md=ta.value;
   document.title=MD.titleOf(md)+' — Easypage';
-  const {doc,offline}=await getDoc(md,false);
+  const {doc,offline}=await getDoc(md,false,theme);
   if(my!==pvSeq)return;   // มีคำขอใหม่กว่าแล้ว
   $('#pvnote').textContent=offline?'ตัวอย่างแบบออฟไลน์ (ไม่พบ PHP) — อาจต่างจากหน้าอ่านเล็กน้อย':'';
   if(doc===lastDoc)return;lastDoc=doc;
@@ -209,6 +224,17 @@ function updUi(){
   $('#pub').hidden=!(info&&info.state!=='draft');
 }
 
+/* ---------- ธีมสี ---------- */
+function setTheme(t){
+  theme=[...document.querySelectorAll('#themes .sw')].some(b=>b.dataset.t===t)?t:'default';
+  document.querySelectorAll('#themes .sw').forEach(b=>{const on=b.dataset.t===theme;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)});
+}
+$('#themes').addEventListener('click',e=>{
+  const b=e.target.closest('.sw');if(!b||b.dataset.t===theme)return;
+  setTheme(b.dataset.t);changed();
+});
+setTheme('default');
+
 /* ---------- วันหมดอายุ ---------- */
 function updExp(){
   const d=$('#expDate').value,tm=$('#expTime');
@@ -222,7 +248,7 @@ $('#expTime').addEventListener('change',()=>{updExp();changed()});
 $('#expClr').onclick=()=>{$('#expDate').value='';$('#expTime').value='';updExp();changed()};
 
 /* ---------- บันทึกขึ้นเซิร์ฟเวอร์ (ฉบับร่าง) ---------- */
-function snapshot(){return {md:ta.value,expDate:$('#expDate').value,expTime:$('#expDate').value?$('#expTime').value:''}}
+function snapshot(){return {md:ta.value,theme,expDate:$('#expDate').value,expTime:$('#expDate').value?$('#expTime').value:''}}
 let forceNext=false,customId=false;
 /* แสดงรหัส/ลิงก์ตามค่า id ปัจจุบัน (เรียกหลังโหลด / สุ่มใหม่ / เปลี่ยนชื่อ) */
 function applyId(){
@@ -237,14 +263,14 @@ async function save(){
   const s=snapshot();
   if(isNew&&!s.md.trim()){dirty=false;EP.bufClear(id);return true}   // หน้าใหม่ที่ยังว่าง ไม่ต้องสร้าง
   saving=true;$('#state').textContent='กำลังบันทึก…';updUi();
-  const r=await EP.save(id,s.md,{isNew,base:forceNext?'':base,expDate:s.expDate,expTime:s.expTime});
+  const r=await EP.save(id,s.md,{isNew,base:forceNext?'':base,expDate:s.expDate,expTime:s.expTime,theme:s.theme});
   saving=false;
   if(r.ok){
     forceNext=false;
     info=r.info;base=info.updated;isNew=false;
     $('#conflict').hidden=true;setErr('');
     const cur=snapshot();
-    if(cur.md===s.md&&cur.expDate===s.expDate&&cur.expTime===s.expTime){dirty=false;EP.bufClear(id);$('#state').textContent='✓ บันทึกขึ้นเซิร์ฟเวอร์แล้ว'}
+    if(cur.md===s.md&&cur.expDate===s.expDate&&cur.expTime===s.expTime&&cur.theme===s.theme){dirty=false;EP.bufClear(id);$('#state').textContent='✓ บันทึกขึ้นเซิร์ฟเวอร์แล้ว'}
     else{saveT=setTimeout(save,300)}   // มีการพิมพ์เพิ่มระหว่างบันทึก
     updUi();return true;
   }
@@ -279,7 +305,7 @@ $('#cfReload').onclick=async()=>{
   const r=await EP.get(id);
   if(!r.ok){setErr(r.error);return}
   ta.value=r.md;info=r.info;base=info.updated;dirty=false;EP.bufClear(id);
-  $('#expDate').value=info.expDate||'';$('#expTime').value=info.expTime||'';
+  $('#expDate').value=info.expDate||'';$('#expTime').value=info.expTime||'';setTheme(info.theme);
   $('#conflict').hidden=true;$('#state').textContent='โหลดฉบับล่าสุดแล้ว';
   updExp();renderPv();updUi();
 };
@@ -338,7 +364,7 @@ $('#publish').onclick=async()=>{
 $('#open').onclick=async()=>{
   const w=window.open('about:blank','_blank');   // เปิดทันทีตอนคลิก กัน popup blocker
   if(!w){EP.toast('เบราว์เซอร์บล็อกหน้าต่างใหม่ — อนุญาต popup แล้วลองอีกครั้ง');return}
-  let {doc}=await getDoc(ta.value,true);
+  let {doc}=await getDoc(ta.value,true,theme);
   const base=location.href.replace(/[?#].*$/,'').replace(/[^\/]*$/,'');
   doc=doc.replace(/<head>/i,'<head><base href="'+base+'">');   // ให้ mdview.css โหลดได้จาก blob:
   w.location.href=URL.createObjectURL(new Blob([doc],{type:'text/html;charset=utf-8'}));

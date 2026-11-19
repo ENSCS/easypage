@@ -290,3 +290,48 @@ pre.copyable:hover { filter: brightness(0.97); }
 @media (max-width: 600px) {
   .doc-row { padding: 0.85em 0.1em; }
 }
+
+/* ============================================================
+   ธีมสี (ผู้เขียนเลือกในหน้าเขียน — เก็บเป็น data-ctheme บน <html>)
+   default = ธีมเดิมด้านบน · t1 / t2 / h2 สีมาจากชุด color-slide (theme-preview)
+   ทุกธีมมี 2 โหมด: สว่าง = [data-ctheme] · มืด = [data-ctheme][data-theme="dark"] (ผู้อ่านสลับเองด้วยปุ่ม Dark/Light)
+   ตัวแปรที่ใช้: bg fg muted border link link-hover code-bg h1 h2 h3 on-link
+   ============================================================ */
+
+/* T1 เขียว–ส้ม */
+[data-ctheme="t1"] {
+  --bg: #F9FCFB; --fg: #0B1F3A; --muted: #4A5B6E; --border: #CFDDD8;
+  --link: #2F6FD0; --link-hover: #1F57AD; --code-bg: #EAF5F2;
+  --h1color: #0B8A74; --h2color: #0B6F5E; --h3color: #B8650A; --on-link: #fff;
+}
+[data-ctheme="t1"][data-theme="dark"] {
+  --bg: #0C1B18; --fg: #E3F1EC; --muted: #9DB5AD; --border: #1F3A33;
+  --link: #6FA3F0; --link-hover: #9CC1F7; --code-bg: #132A25;
+  --h1color: #3DD6B5; --h2color: #7FE3CB; --h3color: #FFB547; --on-link: #0C1B18;
+}
+
+/* T2 ฟ้า–เหลืองอำพัน */
+[data-ctheme="t2"] {
+  --bg: #F5FAFE; --fg: #1C2B39; --muted: #5B6B76; --border: #CFE8F5;
+  --link: #0A6AA1; --link-hover: #075483; --code-bg: #E5F2FB;
+  --h1color: #0088CC; --h2color: #0A6AA1; --h3color: #B06A1B; --on-link: #fff;
+}
+[data-ctheme="t2"][data-theme="dark"] {
+  --bg: #101C28; --fg: #E6EEF5; --muted: #9DB0C0; --border: #25384B;
+  --link: #4DB8F0; --link-hover: #8FD0F5; --code-bg: #182838;
+  --h1color: #4DB8F0; --h2color: #FFC53D; --h3color: #8FD0F5; --on-link: #101C28;
+}
+
+/* H2 น้ำเงินเข้ม–ส้มสด (คอนทราสต์สูง) */
+[data-ctheme="h2"] {
+  --bg: #FFFFFF; --fg: #00091F; --muted: #2B3350; --border: #9AA8D6;
+  --link: #0033CC; --link-hover: #001A66; --code-bg: #E6ECFF;
+  --h1color: #0033CC; --h2color: #B33C00; --h3color: #001A66; --on-link: #fff;
+}
+[data-ctheme="h2"][data-theme="dark"] {
+  --bg: #000A1F; --fg: #FFFFFF; --muted: #C9D2F0; --border: #5A6FC0;
+  --link: #7AA2FF; --link-hover: #A9C2FF; --code-bg: #0B1A4A;
+  --h1color: #FF8A3D; --h2color: #FFB27A; --h3color: #9DB8FF; --on-link: #000A1F;
+}
+[data-ctheme="h2"] body { line-height: 1.8; }
+[data-ctheme="h2"] blockquote { border-left-width: 4px; border-left-color: #FF6A00; }

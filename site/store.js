@@ -74,7 +74,7 @@ const get=id=>read('get',{id});                             // {ok,md,info}
 /* บันทึกฉบับร่าง: o = {isNew, base (เวอร์ชันที่โหลดมา — ถ้าเซิร์ฟเวอร์ใหม่กว่า = ชน; ว่าง = เขียนทับ), expDate, expTime} */
 const save=(id,md,o)=>{
   o=o||{};
-  return write('save',id,{new:o.isNew?1:undefined,base:o.base,exp:o.expDate||'',exptime:o.expTime||''},md);
+  return write('save',id,{new:o.isNew?1:undefined,base:o.base,exp:o.expDate||'',exptime:o.expTime||'',theme:o.theme||'default'},md);
 };
 const publish=id=>write('publish',id);
 const setClosed=(id,closed)=>write(closed?'close':'open',id);

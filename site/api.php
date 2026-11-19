@@ -5,12 +5,12 @@
 // โครงสร้างข้อมูล (บนเซิร์ฟเวอร์ ใช้ไฟล์ ไม่ต้องมี DB):
 //   d/<id>.md      ฉบับร่าง (ข้อความที่กำลังแก้ — บันทึกจากหน้าเขียนอัตโนมัติ)
 //   d/<id>.json    ข้อมูลประกอบ: created, updated (ms), pubv (ค่า updated ตอนเผยแพร่ล่าสุด), pubAt, expDate, expTime
-//   p/<id>.md      ฉบับที่เผยแพร่ (ที่ view.php แสดงให้ผู้อ่าน) · p/<id>.exp วันหมดอายุ · p/<id>.closed ปิดอยู่
+//   p/<id>.md      ฉบับที่เผยแพร่ (ที่ view.php แสดงให้ผู้อ่าน) · p/<id>.exp วันหมดอายุ · p/<id>.closed ปิดอยู่ · p/<id>.theme ธีมสี (ไม่มี = ค่าเริ่มต้น)
 //   trash/<id>-<เวลา>/  หน้าที่ลบ (ย้ายมาเก็บ กู้คืนด้วยมือได้)
 //   หน้าเก่าที่มีแต่ p/<id>.md (ยังไม่มี d/) ใช้ได้ — ฉบับร่างจะถูกสร้างตอนแก้ครั้งแรก
 //
 // การเรียก:  GET  api.php?a=list | a=get&id=
-//            POST api.php?a=save&id=[&new=1][&base=<updated>][&exp=YYYY-MM-DD&exptime=HH:MM]   body = markdown
+//            POST api.php?a=save&id=[&new=1][&base=<updated>][&exp=YYYY-MM-DD&exptime=HH:MM][&theme=default|t1|t2|h2]   body = markdown
 //            POST api.php?a=publish|close|open|delete&id=
 // ช่วงนี้ “ทุกคนใช้ได้” (ยังไม่มีระบบสิทธิ์): ใครก็เห็นและแก้ได้ทุกหน้า — ตั้งใน config.php (ดู config.sample.php)
 // ทุกคำขอเขียน: ต้องมี header X-Easypage: 1 และ Origin ตรง Host (กัน cross-site) · จำกัดจำนวนครั้งต่อ IP
@@ -23,6 +23,8 @@ header('Content-Type: application/json; charset=UTF-8');
 header('Cache-Control: no-store');
 header('X-Robots-Tag: noindex');
 header('X-Content-Type-Options: nosniff');
+
+require_once __DIR__ . '/themes.php';
 
 define('EP_D', __DIR__ . '/d');
 define('EP_P', __DIR__ . '/p');
@@ -137,14 +139,14 @@ function ep_meta($id)
 {
     $m = ep_read_json(EP_D . '/' . $id . '.json');
     if (is_array($m)) {
-        $m += array('created' => 0, 'updated' => 0, 'pubv' => 0, 'pubAt' => 0, 'expDate' => '', 'expTime' => '');
+        $m += array('created' => 0, 'updated' => 0, 'pubv' => 0, 'pubAt' => 0, 'expDate' => '', 'expTime' => '', 'theme' => 'default');
         return $m;
     }
     // หน้าเก่าที่ยังไม่มีไฟล์ประกอบ (มีแต่ p/) — สร้างค่าจากไฟล์ที่เผยแพร่
     $src = ep_has_d($id) ? EP_D . '/' . $id . '.md' : EP_P . '/' . $id . '.md';
     $t   = (int)@filemtime($src) * 1000;
     $m   = array('created' => $t, 'updated' => $t, 'pubv' => ep_has_p($id) ? $t : 0, 'pubAt' => ep_has_p($id) ? (int)@filemtime(EP_P . '/' . $id . '.md') * 1000 : 0,
-        'expDate' => '', 'expTime' => '');
+        'expDate' => '', 'expTime' => '', 'theme' => 'default');
     $e = ep_read_json(EP_P . '/' . $id . '.exp');
     if ($e && isset($e['at']) && $e['at'] > 0) {
         $d = new DateTime('@' . $e['at']);
@@ -201,7 +203,7 @@ function ep_info($id)
     return array('id' => $id, 'title' => $title, 'snippet' => $snip, 'state' => $state,
         'pending' => !$hasP || (int)$m['updated'] !== (int)$m['pubv'],
         'created' => (int)$m['created'], 'updated' => (int)$m['updated'], 'publishedAt' => (int)$m['pubAt'],
-        'expDate' => (string)$m['expDate'], 'expTime' => (string)$m['expTime'], 'bytes' => (int)@filesize($f));
+        'expDate' => (string)$m['expDate'], 'expTime' => (string)$m['expTime'], 'theme' => ep_theme_id($m['theme']), 'bytes' => (int)@filesize($f));
 }
 
 function ep_write_meta($id, $m)
@@ -333,6 +335,7 @@ if ($a === 'save') {
         $m['expDate'] = $d;
         $m['expTime'] = $d === '' ? '' : $t;
     }
+    if (isset($_GET['theme'])) $m['theme'] = ep_theme_id($_GET['theme']);
     $now = ep_now_ms();
     if (!$hasD && $hasP) {   // หน้าเก่าที่มีแต่ฉบับเผยแพร่: แก้ครั้งแรก สร้างฉบับร่างจากฉบับเผยแพร่ (pubv = ฉบับเดิม)
         $m['pubv'] = (int)$m['updated'];
@@ -358,6 +361,9 @@ if ($a === 'publish') {
     } else {
         @unlink(EP_P . '/' . $id . '.exp');
     }
+    $th = ep_theme_id($m['theme']);
+    if ($th !== 'default') ep_write(EP_P, EP_P . '/' . $id . '.theme', $th);
+    else @unlink(EP_P . '/' . $id . '.theme');
     @unlink(EP_P . '/' . $id . '.closed');   // เผยแพร่ = เปิดให้อ่านได้
     $m['pubv']  = (int)$m['updated'];
     $m['pubAt'] = ep_now_ms();
@@ -385,7 +391,7 @@ if ($a === 'rename') {
     if (!ep_valid_id($to)) ep_out(400, array('ok' => false, 'error' => 'ชื่อลิงก์ใหม่ไม่ถูกต้อง (A-Z a-z 0-9 - _ ยาว 3–30 ตัว ไม่ขึ้นต้น/ลงท้ายด้วย - หรือ _)'));
     if (!$exists) ep_out(404, array('ok' => false, 'error' => 'ไม่พบหน้านี้บนเซิร์ฟเวอร์'));
     if ($to === $id) ep_out(200, array('ok' => true, 'id' => $id, 'info' => ep_info($id)));
-    $names = array(EP_D . '/%s.md', EP_D . '/%s.json', EP_P . '/%s.md', EP_P . '/%s.exp', EP_P . '/%s.closed');
+    $names = array(EP_D . '/%s.md', EP_D . '/%s.json', EP_P . '/%s.md', EP_P . '/%s.exp', EP_P . '/%s.theme', EP_P . '/%s.closed');
     $onlyCase = strcasecmp($to, $id) === 0;   // เปลี่ยนแค่ตัวพิมพ์ใหญ่/เล็กของชื่อเดิม
     if (!$onlyCase && ep_id_taken_ci($to)) ep_out(409, array('ok' => false, 'exists' => true, 'error' => 'ชื่อนี้มีคนใช้แล้ว (ไม่แยกตัวพิมพ์ใหญ่/เล็ก) ลองชื่ออื่น'));
     foreach ($names as $n) {
@@ -409,7 +415,7 @@ if ($a === 'delete') {
     ep_prepare(EP_T);
     $dest = EP_T . '/' . $id . '-' . date('Ymd-His');
     if (!@mkdir($dest, 0755, true)) ep_out(500, array('ok' => false, 'error' => 'ลบไม่สำเร็จ (สร้างโฟลเดอร์ trash ไม่ได้)'));
-    foreach (array(EP_D . '/' . $id . '.md', EP_D . '/' . $id . '.json', EP_P . '/' . $id . '.md', EP_P . '/' . $id . '.exp',
+    foreach (array(EP_D . '/' . $id . '.md', EP_D . '/' . $id . '.json', EP_P . '/' . $id . '.md', EP_P . '/' . $id . '.exp', EP_P . '/' . $id . '.theme',
                    EP_P . '/' . $id . '.closed', EP_P . '/' . $id . '.key') as $f) {
         if (is_file($f)) @rename($f, $dest . '/' . basename($f));
     }

@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>จัดการ — Easypage</title>
-<link rel="stylesheet" href="base.css?v=16">
+<link rel="stylesheet" href="base.css?v=17">
 <style>
 :root{--maxw:1100px}
 #q{flex:1 1 240px}
@@ -77,8 +77,8 @@ td.acts .btn,td.acts button{margin:0 2px 2px 0}
   </div>
 </main>
 
-<script src="md.js?v=16"></script>
-<script src="store.js?v=16"></script>
+<script src="md.js?v=17"></script>
+<script src="store.js?v=17"></script>
 <script>
 (function(){
 'use strict';

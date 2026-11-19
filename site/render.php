@@ -5,6 +5,7 @@
 // สไตล์: mdview.css (สำเนาของ mdparse/style.css)
 // ========================================
 require_once __DIR__ . '/parsedown.php';
+require_once __DIR__ . '/themes.php';
 
 /** แปลง markdown → array(html, hasMath, title) */
 function ep_render($content)
@@ -93,20 +94,35 @@ function ep_render($content)
 /** ลิงก์ย่อ — ต้องตรงกับ SHORT_BASE ใน store.js */
 if (!defined('EP_SHORT_BASE')) define('EP_SHORT_BASE', 'https://9fly.tv/p/');
 
-function ep_page($html, $hasMath, $title, $bare = false, $id = '')
+/** ไอคอน SVG (Tabler) ของปุ่มในหน้าอ่าน — ใช้สีตามตัวอักษร (currentColor) */
+function ep_icon($name)
 {
+    static $i = array(
+        'link' => '<svg class="ep-i" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 15l6 -6"/><path d="M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464"/><path d="M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"/></svg>',
+        'sun'  => '<svg class="ep-i" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656"/><path d="M6.343 17.657l-1.414 1.414"/><path d="M6.343 6.343l-1.414 -1.414"/><path d="M17.657 6.343l1.414 -1.414"/><path d="M17.657 17.657l1.414 1.414"/><path d="M4 12h-2"/><path d="M12 4v-2"/><path d="M20 12h2"/><path d="M12 20v2"/></svg>',
+        'lock' => '<svg class="ep-i" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6"/><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg>',
+        'search' => '<svg class="ep-i" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="15.5" y2="15.5"/></svg>',
+        'hourglass' => '<svg class="ep-i" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6.5 7h11"/><path d="M6 20v-2a6 6 0 1 1 12 0v2a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1"/><path d="M6 4v2a6 6 0 1 0 12 0v-2a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1"/></svg>',
+        'moon' => '<svg class="ep-i" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454l0 .008"/></svg>',
+    );
+    return $i[$name];
+}
+
+function ep_page($html, $hasMath, $title, $bare = false, $id = '', $theme = 'default')
+{
+    $theme = ep_theme_id($theme);
     $short = (!empty($id) && !$bare) ? EP_SHORT_BASE . $id : '';
     $v = @filemtime(__DIR__ . '/mdview.css');
     ob_start();
 ?><!DOCTYPE html>
-<html lang="th">
+<html lang="th" data-ctheme="<?php echo $theme; ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title><?php echo htmlspecialchars($title); ?></title>
 <link rel="stylesheet" href="mdview.css?v=<?php echo (int)$v; ?>">
-<style>:not(pre)>code.copyable{cursor:copy}:not(pre)>code.copyable:hover{outline:1px solid var(--link);outline-offset:1px}</style>
+<style>.theme-toggle,.short-btn{display:inline-flex;align-items:center;gap:.4em}.theme-wrap .ep-i{width:1.2em;height:1.2em;flex:none}:not(pre)>code.copyable{cursor:copy}:not(pre)>code.copyable:hover{outline:1px solid var(--link);outline-offset:1px}</style>
 <?php if ($bare): ?>
 <style>.container{padding-top:1.1rem;padding-bottom:2rem}.container>:first-child{margin-top:0}</style>
 <?php endif; ?>
@@ -128,7 +144,7 @@ function ep_page($html, $hasMath, $title, $bare = false, $id = '')
 .short-url b{font-weight:700;color:var(--h2color)}
 .short-url span{color:var(--fg);opacity:.55}
 .short-act{display:flex;justify-content:flex-end}
-.short-copy{background:var(--link);color:#fff;border:0;border-radius:999px;padding:.55rem 1.3rem;font:inherit;font-size:1rem;cursor:pointer}
+.short-copy{background:var(--link);color:var(--on-link,#fff);border:0;border-radius:999px;padding:.55rem 1.3rem;font:inherit;font-size:1rem;cursor:pointer}
 .short-copy:hover{background:var(--link-hover)}
 </style>
 <?php endif; ?>
@@ -144,8 +160,8 @@ function ep_page($html, $hasMath, $title, $bare = false, $id = '')
 <div class="theme-wrap">
   <button class="font-btn" id="fontDown">A−</button>
   <button class="font-btn" id="fontUp">A+</button>
-  <button class="theme-toggle" id="themeToggle">🌙 Dark</button>
-  <?php if ($short !== ''): ?><button class="short-btn" id="shortBtn" type="button" title="แสดงลิงก์ย่อขนาดใหญ่ ให้คัดลอกหรือบอกต่อ">🔗 ลิงก์ย่อ</button><?php endif; ?>
+  <button class="theme-toggle" id="themeToggle"><?php echo ep_icon('moon'); ?> Dark</button>
+  <?php if ($short !== ''): ?><button class="short-btn" id="shortBtn" type="button" title="แสดงลิงก์ย่อขนาดใหญ่ ให้คัดลอกหรือบอกต่อ"><?php echo ep_icon('link'); ?> ลิงก์ย่อ</button><?php endif; ?>
 </div>
 <?php endif; ?>
 <?php echo $html; ?>
@@ -166,6 +182,7 @@ function ep_page($html, $hasMath, $title, $bare = false, $id = '')
 <script>
 (function() {
   var BARE = <?php echo $bare ? 'true' : 'false'; ?>;   // preview ในหน้าเขียน: ขนาดตัวอักษรปกติเสมอ ไม่ตามค่า A+/A− ของหน้าอ่าน
+  var ICON_SUN = <?php echo json_encode(ep_icon('sun')); ?>, ICON_MOON = <?php echo json_encode(ep_icon('moon')); ?>;
   var btn = document.getElementById('themeToggle');
   var fontUp = document.getElementById('fontUp');
   var fontDown = document.getElementById('fontDown');
@@ -179,7 +196,7 @@ function ep_page($html, $hasMath, $title, $bare = false, $id = '')
   }
   function applyTheme(t) {
     document.documentElement.setAttribute('data-theme', t);
-    if (btn) btn.textContent = t === 'dark' ? '☀️ Light' : '🌙 Dark';
+    if (btn) btn.innerHTML = t === 'dark' ? ICON_SUN + ' Light' : ICON_MOON + ' Dark';
     store('theme', t);
   }
   applyTheme(theme);
@@ -323,7 +340,8 @@ function ep_notice($icon, $title, $text, $hint = '', $id = '')
 <link rel="stylesheet" href="mdview.css?v=<?php echo (int)$v; ?>">
 <style>
 .notice{max-width:26em;margin:0 auto;padding:14vh 1.5rem 4rem;text-align:center}
-.notice .ico{font-size:3.4rem;line-height:1;margin-bottom:.4em}
+.notice .ico{font-size:3.4rem;line-height:1;margin-bottom:.4em;color:var(--muted)}
+.notice .ico .ep-i{width:1em;height:1em;stroke-width:1.5}
 .notice h1{font-size:1.7em;margin:0 0 .5em;line-height:1.4}
 .notice p{margin:.6em 0}
 .notice .hint{color:var(--muted);font-size:.9em;margin-top:1.4em}

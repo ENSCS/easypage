@@ -77,7 +77,7 @@ if ($state === 'invalid') {
 }
 if ($state === 'closed') {
     http_response_code(403);
-    echo ep_notice('🔒', 'บทความนี้ปิดการเผยแพร่อยู่',
+    echo ep_notice(ep_icon('lock'), 'บทความนี้ปิดการเผยแพร่อยู่',
         'ผู้เขียนปิดบทความนี้ไว้ ขณะนี้จึงยังไม่สามารถอ่านได้',
         'หากต้องการอ่าน กรุณาติดต่อผู้ที่ส่งลิงก์นี้ให้คุณ หรือลองกลับมาใหม่ภายหลัง', $id);
     exit;
@@ -89,14 +89,14 @@ if ($state === 'expired') {
     $when = (int)$dt->format('j') . ' ' . $mon[(int)$dt->format('n')] . ' ' . ((int)$dt->format('Y') + 543)
           . (!empty($exp['time']) ? ' เวลา ' . $dt->format('H:i') . ' น.' : '');
     http_response_code(410);
-    echo ep_notice('⏳', 'ลิงก์นี้หมดอายุแล้ว',
+    echo ep_notice(ep_icon('hourglass'), 'ลิงก์นี้หมดอายุแล้ว',
         'บทความนี้หมดอายุเมื่อ ' . $when . ' จึงไม่สามารถอ่านได้อีก',
         'หากต้องการอ่านต่อ กรุณาติดต่อผู้ที่ส่งลิงก์นี้ให้คุณ เพื่อขอลิงก์ใหม่หรือขอขยายเวลา', $id);
     exit;
 }
 if ($state === 'missing') {
     http_response_code(404);
-    echo ep_notice('🔍', 'ไม่พบบทความนี้',
+    echo ep_notice(ep_icon('search'), 'ไม่พบบทความนี้',
         'อาจพิมพ์ลิงก์ผิด บทความยังไม่ได้เผยแพร่ หรือถูกลบไปแล้ว',
         'ลองตรวจสอบลิงก์อีกครั้ง หรือขอลิงก์ใหม่จากผู้ที่ส่งให้คุณ', $id);
     exit;
@@ -105,4 +105,5 @@ if ($state === 'missing') {
 $content = file_get_contents($file);
 if (substr($content, 0, 3) === "\xEF\xBB\xBF") $content = substr($content, 3);   // ตัด BOM
 list($html, $math, $title) = ep_render($content);
-echo ep_page($html, $math, $title, false, $id);
+$theme = is_file(__DIR__ . '/p/' . $id . '.theme') ? ep_theme_id(@file_get_contents(__DIR__ . '/p/' . $id . '.theme')) : 'default';
+echo ep_page($html, $math, $title, false, $id, $theme);
