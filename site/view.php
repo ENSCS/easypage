@@ -1,7 +1,7 @@
 <?php
 // ========================================
 // easypage/view.php?=xxxxx — หน้าอ่านที่แชร์ให้คนอื่น
-// อ่านไฟล์ p/xxxxx.md (รหัส 5 ตัว a-z 0-9 เท่านั้น → ไม่มี path traversal) แล้วแปลงด้วย Parsedown
+// อ่านไฟล์ p/xxxxx.md (ชื่อลิงก์ A-Za-z0-9 - _ เท่านั้น → ไม่มี path traversal) แล้วแปลงด้วย Parsedown
 //
 // สถานะของหน้า:
 //   open    มี p/xxxxx.md และไม่มี p/xxxxx.closed → แสดงบทความ (200)
@@ -16,8 +16,14 @@ header('X-Robots-Tag: noindex');
 header('Cache-Control: no-store');
 
 $id = null;
-if (preg_match('/^(?:id)?=([A-Za-z0-9]{5})(?:&|$)/', isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : '', $m)) {
-    $id = strtolower($m[1]);
+if (preg_match('/^(?:id)?=([A-Za-z0-9][A-Za-z0-9_-]{1,28}[A-Za-z0-9])(?:&|$)/', isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : '', $m)) {
+    $id = $m[1];
+    // ชื่อลิงก์ไม่สนตัวพิมพ์ใหญ่/เล็ก: ถ้าไม่เจอตรงตัว ลองหาชื่อที่ต่างกันแค่ตัวพิมพ์ (ลิงก์เก่าที่เคยแปลงเป็นตัวเล็กก็ยังเปิดได้)
+    if (!is_file(__DIR__ . '/p/' . $id . '.md') && !is_file(__DIR__ . '/p/' . $id . '.closed')) {
+        foreach ((array)glob(__DIR__ . '/p/*.md') as $f) {
+            if (strcasecmp(basename($f, '.md'), $id) === 0) { $id = basename($f, '.md'); break; }
+        }
+    }
 }
 
 $file   = $id ? __DIR__ . '/p/' . $id . '.md' : null;

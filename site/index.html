@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>จัดการ — Easypage</title>
-<link rel="stylesheet" href="base.css?v=10">
+<link rel="stylesheet" href="base.css?v=13">
 <style>
 :root{--maxw:1100px}
 #q{flex:1 1 240px}
@@ -75,8 +75,8 @@ td.acts .btn,td.acts button{margin:0 2px 2px 0}
   </div>
 </main>
 
-<script src="md.js?v=10"></script>
-<script src="store.js?v=10"></script>
+<script src="md.js?v=13"></script>
+<script src="store.js?v=13"></script>
 <script>
 (function(){
 'use strict';
@@ -104,7 +104,7 @@ function draw(){
     if(s==='draft'||s==='modified')cnt.pend++;else if(s==='published')cnt.done++;else cnt.off++;
   }
   $('#sAll').textContent=all.length;$('#sPend').textContent=cnt.pend;$('#sDone').textContent=cnt.done;$('#sClosed').textContent=cnt.off;
-  const rows=all.filter(p=>!qs||p.id.includes(qs)||(p.title||'').toLowerCase().includes(qs)||(p.snippet||'').toLowerCase().includes(qs));
+  const rows=all.filter(p=>!qs||p.id.toLowerCase().includes(qs)||(p.title||'').toLowerCase().includes(qs)||(p.snippet||'').toLowerCase().includes(qs));
   const tb=$('#rows');tb.textContent='';
   const em=$('#empty');
   em.hidden=!!rows.length;

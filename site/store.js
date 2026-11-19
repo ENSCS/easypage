@@ -8,7 +8,7 @@
 /* ตัวอักษรที่ใช้สุ่มรหัส: a-z และ 1-9 โดยตัด 0 o i l ออก (หน้าตาคล้ายกัน อ่าน/พิมพ์สับสน) = 32 ตัวพอดี
    ตรวจรหัสที่มีอยู่แล้ว (ID_RE) ยังรับ a-z0-9 กว้างๆ เพื่อให้หน้าเก่าที่ใช้ตัวอักษรเหล่านี้ยังเปิด/แก้ได้ */
 const ALPHA='abcdefghjkmnpqrstuvwxyz123456789';
-const ID_RE=/^[a-z0-9]{5}$/;
+const ID_RE=/^[A-Za-z0-9][A-Za-z0-9_-]{1,28}[A-Za-z0-9]$/;   // ชื่อลิงก์: A-Z a-z 0-9 - _ ยาว 3–30 ตัว (สุ่มให้ 5 ตัว)
 const OLD_KEY='easypage:v1';
 
 function randId(){
@@ -18,8 +18,8 @@ function randId(){
   return s;
 }
 function idFromUrl(){
-  const m=location.search.match(/^\?(?:id)?=([A-Za-z0-9]{5})(?:&|$)/);
-  return m?m[1].toLowerCase():null;
+  const m=location.search.match(/^\?(?:id)?=([A-Za-z0-9][A-Za-z0-9_-]{1,28}[A-Za-z0-9])(?:&|$)/);
+  return m?m[1]:null;
 }
 const shareUrl=id=>location.href.replace(/[?#].*$/,'').replace(/[^\/]*$/,'')+'view.php?='+id;
 /* ลิงก์ย่อ: ระบบย่อลิงก์แยกต่างหาก รับรหัส 5 ตัวของเราไปต่อท้ายได้เลย — เปลี่ยนโดเมน/พาธที่นี่ที่เดียว */
@@ -70,6 +70,7 @@ const save=(id,md,o)=>{
 const publish=id=>write('publish',id);
 const setClosed=(id,closed)=>write(closed?'close':'open',id);
 const remove=id=>write('delete',id);
+const rename=(id,to)=>write('rename',id,{to});            // เปลี่ยนชื่อลิงก์ (รหัส) — ลิงก์เดิมเปิดไม่ได้อีก
 
 /* ---------- ที่พักกันข้อความหาย (เฉพาะระหว่างพิมพ์ — ล้างเมื่อบันทึกขึ้นเซิร์ฟเวอร์สำเร็จ) ---------- */
 const BUF='easypage:buf:';
@@ -144,6 +145,6 @@ function toast(msg){
   clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),1800);
 }
 
-g.EP={ID_RE,randId,idFromUrl,shareUrl,shortUrl,list,get,save,publish,setClosed,remove,
+g.EP={ID_RE,randId,idFromUrl,shareUrl,shortUrl,list,get,save,publish,setClosed,remove,rename,
   bufSet,bufGet,bufClear,migrateLocal,fmtExpiry,fileName,download,fmtDate,copyText,toast};
 })(window);

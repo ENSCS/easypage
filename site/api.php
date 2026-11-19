@@ -112,6 +112,23 @@ function ep_parse_exp($d, $t)
 function ep_has_d($id) { return is_file(EP_D . '/' . $id . '.md'); }
 function ep_has_p($id) { return is_file(EP_P . '/' . $id . '.md'); }
 
+/** รหัสหน้า = ชื่อลิงก์: A-Z a-z 0-9 - _ (ไม่ขึ้นต้น/ลงท้ายด้วย - หรือ _) ยาว 3–30 ตัว — หน้าเก่าที่สุ่ม 5 ตัวก็เข้าเงื่อนไขนี้ */
+function ep_valid_id($s)
+{
+    return is_string($s) && preg_match('/^[A-Za-z0-9][A-Za-z0-9_-]{1,28}[A-Za-z0-9]$/', $s) === 1;
+}
+
+/** มีหน้าที่ชื่อเดียวกันอยู่แล้วไหม โดยไม่สนตัวพิมพ์ใหญ่/เล็ก (กัน Abc กับ abc เป็นคนละหน้า — บางเซิร์ฟเวอร์แยกตัวใหญ่เล็ก บางเครื่องไม่แยก) */
+function ep_id_taken_ci($id)
+{
+    foreach (array(EP_D, EP_P) as $dir) {
+        foreach ((array)glob($dir . '/*.md') as $f) {
+            if (strcasecmp(basename($f, '.md'), $id) === 0) return true;
+        }
+    }
+    return false;
+}
+
 function ep_meta($id)
 {
     $m = ep_read_json(EP_D . '/' . $id . '.json');
@@ -207,9 +224,9 @@ $maxPages = isset($cfg['max_pages']) ? (int)$cfg['max_pages'] : 2000;
 
 $a  = isset($_GET['a']) ? (string)$_GET['a'] : '';
 $id = isset($_GET['id']) ? (string)$_GET['id'] : '';
-$validIdNeeded = in_array($a, array('get', 'save', 'publish', 'close', 'open', 'delete'), true);
-if ($validIdNeeded && !preg_match('/^[a-z0-9]{5}$/', $id)) {
-    ep_out(400, array('ok' => false, 'error' => 'รหัสไม่ถูกต้อง (ต้องเป็น a-z 0-9 จำนวน 5 ตัว)'));
+$validIdNeeded = in_array($a, array('get', 'save', 'publish', 'close', 'open', 'delete', 'rename'), true);
+if ($validIdNeeded && !ep_valid_id($id)) {
+    ep_out(400, array('ok' => false, 'error' => 'ชื่อลิงก์ไม่ถูกต้อง (A-Z a-z 0-9 - _ ยาว 3–30 ตัว ไม่ขึ้นต้น/ลงท้ายด้วย - หรือ _)'));
 }
 
 // ========== อ่าน (GET) ==========
@@ -222,7 +239,7 @@ if ($a === 'list') {
     foreach ((array)glob(EP_P . '/*.md') as $f) $ids[basename($f, '.md')] = 1;
     $items = array();
     foreach (array_keys($ids) as $k) {
-        if (!preg_match('/^[a-z0-9]{5}$/', $k)) continue;
+        if (!ep_valid_id($k)) continue;
         $info = ep_info($k);
         if ($info['state'] === 'draft' && $info['bytes'] === 0) continue;   // ฉบับร่างว่างเปล่า ไม่ต้องแสดง
         $items[] = $info;
@@ -243,7 +260,7 @@ if ($a === 'get') {
 }
 
 // ========== เขียน (POST) ==========
-if (!in_array($a, array('save', 'publish', 'close', 'open', 'delete'), true)) {
+if (!in_array($a, array('save', 'publish', 'close', 'open', 'delete', 'rename'), true)) {
     ep_out(400, array('ok' => false, 'error' => 'ไม่รู้จักคำสั่ง'));
 }
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -294,7 +311,7 @@ if ($a === 'save') {
     if ($md === false || strlen($md) > EP_MAX_BYTES) ep_out(413, array('ok' => false, 'error' => 'ข้อความใหญ่เกิน 2MB'));
     if (!mb_check_encoding($md, 'UTF-8')) ep_out(400, array('ok' => false, 'error' => 'ข้อความต้องเป็น UTF-8'));
 
-    if ($isNew && $exists) ep_out(409, array('ok' => false, 'exists' => true, 'error' => 'รหัสนี้มีอยู่แล้ว'));
+    if ($isNew && ($exists || ep_id_taken_ci($id))) ep_out(409, array('ok' => false, 'exists' => true, 'error' => 'รหัสนี้มีอยู่แล้ว'));
     if (!$isNew && !$exists) ep_out(404, array('ok' => false, 'error' => 'ไม่พบหน้านี้บนเซิร์ฟเวอร์ (อาจถูกลบไปแล้ว)'));
     if ($isNew && trim($md) === '') ep_out(400, array('ok' => false, 'error' => 'ไม่มีเนื้อหา'));
     if (!$exists && $maxPages > 0 && ep_count_pages() >= $maxPages) {
@@ -356,6 +373,31 @@ if ($a === 'close' || $a === 'open') {
         ep_out(500, array('ok' => false, 'error' => 'เปิดการเผยแพร่ไม่สำเร็จ'));
     }
     ep_out(200, array('ok' => true, 'info' => ep_info($id)));
+}
+
+// ---------- เปลี่ยนชื่อลิงก์ (รหัส): ย้ายไฟล์ทั้งชุดไปชื่อใหม่ — ลิงก์เดิมจะเปิดไม่ได้อีก ----------
+if ($a === 'rename') {
+    $to = isset($_GET['to']) ? (string)$_GET['to'] : '';
+    if (!ep_valid_id($to)) ep_out(400, array('ok' => false, 'error' => 'ชื่อลิงก์ใหม่ไม่ถูกต้อง (A-Z a-z 0-9 - _ ยาว 3–30 ตัว ไม่ขึ้นต้น/ลงท้ายด้วย - หรือ _)'));
+    if (!$exists) ep_out(404, array('ok' => false, 'error' => 'ไม่พบหน้านี้บนเซิร์ฟเวอร์'));
+    if ($to === $id) ep_out(200, array('ok' => true, 'id' => $id, 'info' => ep_info($id)));
+    $names = array(EP_D . '/%s.md', EP_D . '/%s.json', EP_P . '/%s.md', EP_P . '/%s.exp', EP_P . '/%s.closed');
+    $onlyCase = strcasecmp($to, $id) === 0;   // เปลี่ยนแค่ตัวพิมพ์ใหญ่/เล็กของชื่อเดิม
+    if (!$onlyCase && ep_id_taken_ci($to)) ep_out(409, array('ok' => false, 'exists' => true, 'error' => 'ชื่อนี้มีคนใช้แล้ว (ไม่แยกตัวพิมพ์ใหญ่/เล็ก) ลองชื่ออื่น'));
+    foreach ($names as $n) {
+        if (!$onlyCase && file_exists(sprintf($n, $to))) ep_out(409, array('ok' => false, 'exists' => true, 'error' => 'ชื่อนี้มีคนใช้แล้ว ลองชื่ออื่น'));
+    }
+    $done = array();
+    foreach ($names as $n) {
+        $from = sprintf($n, $id);
+        if (!is_file($from)) continue;
+        if (!@rename($from, sprintf($n, $to))) {
+            foreach ($done as $d) @rename($d[1], $d[0]);   // ย้อนกลับ
+            ep_out(500, array('ok' => false, 'error' => 'เปลี่ยนชื่อไม่สำเร็จ (ย้ายไฟล์ไม่ได้)'));
+        }
+        $done[] = array($from, sprintf($n, $to));
+    }
+    ep_out(200, array('ok' => true, 'id' => $to, 'info' => ep_info($to)));
 }
 
 // ---------- ลบ: ย้ายไปเก็บใน trash/ (กู้คืนด้วยมือได้) ----------
