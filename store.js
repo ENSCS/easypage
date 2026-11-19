@@ -62,6 +62,16 @@ function idFromUrl(){
 }
 const shareUrl=id=>location.href.replace(/[?#].*$/,'').replace(/[^\/]*$/,'')+'view.php?='+id;
 
+/* ชื่อไฟล์ตอนดาวน์โหลด = ชื่อเรื่อง (บรรทัดแรกของเนื้อหา) + .md — ตัดอักขระที่ใช้ตั้งชื่อไฟล์ไม่ได้ออก ไม่มีชื่อเรื่องใช้รหัสหน้าแทน
+   (ไฟล์บนเซิร์ฟเวอร์ยังเป็น p/<รหัส>.md เสมอ — ชื่อนี้ใช้เฉพาะไฟล์ที่ดาวน์โหลด) */
+function fileName(p){
+  let t=(p.title||(g.MD?g.MD.titleOf(p.md):'')||'').trim();
+  if(t==='ไม่มีชื่อเรื่อง'&&!p.title)t='';
+  t=t.replace(/…$/,'').replace(/[\\/:*?"<>|\u0000-\u001f]+/g,' ').replace(/\s+/g,' ').replace(/^[.\s]+|[.\s]+$/g,'');
+  t=[...t].slice(0,80).join('').trim();
+  return (t||p.id)+'.md';
+}
+
 /* ---------- download ---------- */
 function download(name,data,type){
   const a=document.createElement('a');
@@ -177,5 +187,5 @@ async function syncRemote(){
 }
 
 g.EP={ID_RE,list,get,put,remove,fileText,
-  genId,exists,remoteState,syncRemote,setClosed,idFromUrl,shareUrl,download,fmtDate,copyText,toast,isPending,publish,markPublished,markClosed,expiryOf,fmtExpiry,isExpired};
+  genId,exists,remoteState,syncRemote,setClosed,fileName,idFromUrl,shareUrl,download,fmtDate,copyText,toast,isPending,publish,markPublished,markClosed,expiryOf,fmtExpiry,isExpired};
 })(window);
