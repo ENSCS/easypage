@@ -99,4 +99,4 @@ if ($state === 'missing') {
 $content = file_get_contents($file);
 if (substr($content, 0, 3) === "\xEF\xBB\xBF") $content = substr($content, 3);   // ตัด BOM
 list($html, $math, $title) = ep_render($content);
-echo ep_page($html, $math, $title);
+echo ep_page($html, $math, $title, false, $id);

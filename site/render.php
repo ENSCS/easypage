@@ -90,8 +90,12 @@ function ep_render($content)
 
 /** ประกอบหน้า HTML เต็ม (หน้าอ่าน / preview ใช้เหมือนกัน) */
 /** $bare = true → ไม่มีปุ่มธีม/ขนาดตัวอักษร แสดงเฉพาะเนื้อหา (ใช้กับ preview) */
-function ep_page($html, $hasMath, $title, $bare = false)
+/** ลิงก์ย่อ — ต้องตรงกับ SHORT_BASE ใน store.js */
+if (!defined('EP_SHORT_BASE')) define('EP_SHORT_BASE', 'https://9fly.tv/p/');
+
+function ep_page($html, $hasMath, $title, $bare = false, $id = '')
 {
+    $short = (!empty($id) && !$bare) ? EP_SHORT_BASE . $id : '';
     $v = @filemtime(__DIR__ . '/mdview.css');
     ob_start();
 ?><!DOCTYPE html>
@@ -104,6 +108,28 @@ function ep_page($html, $hasMath, $title, $bare = false)
 <link rel="stylesheet" href="mdview.css?v=<?php echo (int)$v; ?>">
 <?php if ($bare): ?>
 <style>.container{padding-top:1.1rem;padding-bottom:2rem}.container>:first-child{margin-top:0}</style>
+<?php endif; ?>
+<?php if ($short !== ''): ?>
+<style>
+.short-btn{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:.3rem .7rem;font:inherit;font-size:.85rem;color:var(--fg);cursor:pointer}
+.short-btn:hover{background:var(--border)}
+.short-modal{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;padding:1rem;overflow:auto;background:rgba(0,0,0,.5)}
+.short-modal.show{display:flex}
+/* กล่องอยู่สูง 40 : ต่ำ 60 ของความสูงหน้าจอ */
+.short-modal::before,.short-modal::after{content:'';min-height:0}
+.short-modal::before{flex:40 1 0}
+.short-modal::after{flex:60 1 0}
+.short-card{position:relative;flex:none;width:min(66rem,100%);background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:24px;padding:1.4rem 1.6rem 1.2rem;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.short-card h2{margin:0;font-size:1.15rem;font-weight:500;color:var(--fg)}
+.short-x{position:absolute;top:.9rem;right:1rem;background:none;border:0;font-size:1.7rem;line-height:1;color:var(--muted);cursor:pointer;padding:.2rem .5rem;border-radius:50%}
+.short-x:hover{background:var(--border)}
+.short-url{margin:1.6rem 0 1.4rem;text-align:center;font-size:clamp(2rem,11vw,7rem);line-height:1.25;word-break:break-all;user-select:all;cursor:pointer}
+.short-url b{font-weight:700;color:var(--h2color)}
+.short-url span{color:var(--fg);opacity:.55}
+.short-act{display:flex;justify-content:flex-end}
+.short-copy{background:var(--link);color:#fff;border:0;border-radius:999px;padding:.55rem 1.3rem;font:inherit;font-size:1rem;cursor:pointer}
+.short-copy:hover{background:var(--link-hover)}
+</style>
 <?php endif; ?>
 <?php if ($hasMath): ?>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
@@ -118,10 +144,23 @@ function ep_page($html, $hasMath, $title, $bare = false)
   <button class="font-btn" id="fontDown">A−</button>
   <button class="font-btn" id="fontUp">A+</button>
   <button class="theme-toggle" id="themeToggle">🌙 Dark</button>
+  <?php if ($short !== ''): ?><button class="short-btn" id="shortBtn" type="button" title="แสดงลิงก์ย่อขนาดใหญ่ ให้คัดลอกหรือบอกต่อ">🔗 ลิงก์ย่อ</button><?php endif; ?>
 </div>
 <?php endif; ?>
 <?php echo $html; ?>
 </div>
+<?php if ($short !== ''):
+    $shortHost = preg_replace('#^https?://#', '', $short);
+    $cut = strrpos($shortHost, '/') + 1; ?>
+<div class="short-modal" id="shortModal" role="dialog" aria-modal="true" aria-label="ลิงก์ย่อ">
+  <div class="short-card">
+    <h2>ลิงก์ย่อ</h2>
+    <button class="short-x" id="shortX" type="button" aria-label="ปิด">×</button>
+    <div class="short-url" id="shortUrl" title="คลิกเพื่อคัดลอก"><span><?php echo htmlspecialchars(substr($shortHost, 0, $cut)); ?></span><b><?php echo htmlspecialchars(substr($shortHost, $cut)); ?></b></div>
+    <div class="short-act"><button class="short-copy" id="shortCopy" type="button">คัดลอกลิงก์</button></div>
+  </div>
+</div>
+<?php endif; ?>
 <div class="copy-toast" id="copyToast" role="status"></div>
 <script>
 (function() {
@@ -207,6 +246,22 @@ function ep_page($html, $hasMath, $title, $bare = false)
       legacy();
     }
   }
+  // --- ลิงก์ย่อ: กดแล้วแสดงตัวใหญ่ + ปุ่มคัดลอก ---
+  var shortBtn = document.getElementById('shortBtn');
+  if (shortBtn) {
+    var SHORT = <?php echo json_encode($short); ?>;
+    var modal = document.getElementById('shortModal');
+    function shortOpen() { modal.classList.add('show'); document.getElementById('shortCopy').focus(); }
+    function shortClose() { modal.classList.remove('show'); shortBtn.focus(); }
+    function shortCopy() { copyText(SHORT, function(ok) { toast(ok ? 'คัดลอกลิงก์ย่อแล้ว' : 'คัดลอกไม่สำเร็จ — เลือกลิงก์แล้วกด Ctrl/Cmd+C'); }); }
+    shortBtn.addEventListener('click', shortOpen);
+    document.getElementById('shortX').addEventListener('click', shortClose);
+    document.getElementById('shortCopy').addEventListener('click', shortCopy);
+    document.getElementById('shortUrl').addEventListener('click', shortCopy);
+    modal.addEventListener('click', function(e) { if (e.target === modal) shortClose(); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && modal.classList.contains('show')) shortClose(); });
+  }
+
   document.querySelectorAll('.container pre').forEach(function(pre) {
     pre.classList.add('copyable');
     pre.setAttribute('title', 'คลิกเพื่อคัดลอก');
