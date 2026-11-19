@@ -106,6 +106,7 @@ function ep_page($html, $hasMath, $title, $bare = false, $id = '')
 <meta name="robots" content="noindex">
 <title><?php echo htmlspecialchars($title); ?></title>
 <link rel="stylesheet" href="mdview.css?v=<?php echo (int)$v; ?>">
+<style>:not(pre)>code.copyable{cursor:copy}:not(pre)>code.copyable:hover{outline:1px solid var(--link);outline-offset:1px}</style>
 <?php if ($bare): ?>
 <style>.container{padding-top:1.1rem;padding-bottom:2rem}.container>:first-child{margin-top:0}</style>
 <?php endif; ?>
@@ -261,6 +262,19 @@ function ep_page($html, $hasMath, $title, $bare = false, $id = '')
     modal.addEventListener('click', function(e) { if (e.target === modal) shortClose(); });
     document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && modal.classList.contains('show')) shortClose(); });
   }
+
+  // --- กดที่โค้ดในบรรทัด (`...`) = คัดลอกเฉพาะข้อความนั้น ---
+  document.querySelectorAll('.container code').forEach(function(code) {
+    if (code.closest('pre') || code.closest('a')) return;
+    code.classList.add('copyable');
+    code.setAttribute('title', 'คลิกเพื่อคัดลอก');
+    code.addEventListener('click', function() {
+      var sel = window.getSelection();
+      if (sel && String(sel).length > 0) return;   // กำลังลากคลุมเอง
+      var t = code.textContent;
+      copyText(t, function(ok) { toast(ok ? 'คัดลอกแล้ว: ' + (t.length > 40 ? t.slice(0, 40) + '…' : t) : 'คัดลอกไม่สำเร็จ'); });
+    });
+  });
 
   document.querySelectorAll('.container pre').forEach(function(pre) {
     pre.classList.add('copyable');
